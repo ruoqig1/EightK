@@ -35,16 +35,20 @@ class OptModelType(Enum):
 
 
 class Constant:
-    if socket.gethostname() in ['HEC37827','3330L-214940-M']:
+    if socket.gethostname() in ['HEC37827','3330L-214940-M','rdl-orlr7x.desktop.cloud.unimelb.edu.au']:
         # main_dir = '/media/antoine/ssd_ntfs//wsj_openai/'
         MAIN_DIR = './'
     else:
         MAIN_DIR = '/data/gpfs/projects/punim2039/EightK/'
         HUGGING_DIR = '/data/gpfs/projects/punim2039/hugging/'
 
+
     FRED_API = 'cfc526395a5631650ec0b7ee96b149f4'
 
-    DROP_RES_DIR = '/Users/adidisheim/Dropbox/AB-AD_Share/res/'
+    DROP_RES_DIR = '/Users/adidisheim/Dropbox/Apps/Overleaf/EightKEarlyAnalysis/'
+
+    LIST_ITEMS_TO_USE = [1.01, 1.02, 1.03, 1.04, 2.01, 2.03, 2.04, 2.05, 2.06, 3.02, 3.03, 4.01, 4.02, 5.01, 5.02, 5.03, 5.04, 5.05, 5.06, 5.07, 5.08, 6.01, 6.02, 6.03, 6.04, 6.05, 7.01, 8.01, 9.01]
+    LIST_ITEMS_FULL = [1.01, 1.02, 1.03, 1.04, 2.01, 2.02, 2.03, 2.04, 2.05, 2.06, 3.01, 3.02, 3.03, 4.01, 4.02, 5.01, 5.02, 5.03, 5.04, 5.05, 5.06, 5.07, 5.08, 6.01, 6.02, 6.03, 6.04, 6.05, 7.01, 8.01, 9.01]
 
     SECTIONS = {
         1.0: "Registrant's Business and Operations",
@@ -92,6 +96,7 @@ class Constant:
         9.01: "Financial Statements and Exhibits"
     }
 
+    IS_VM = socket.gethostname()=='rdl-orlr7x.desktop.cloud.unimelb.edu.au'
 
 ##################
 # params classes
