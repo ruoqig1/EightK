@@ -37,7 +37,15 @@ class Data:
 
         self.raw_dir = par.data.base_data_dir + '/raw/'
         self.p_dir = par.data.base_data_dir + '/p/'
+        self.p_eight_k_clean = par.data.base_data_dir + '/cleaned/eight_k_first_process/'
+        self.p_eight_k_token = par.data.base_data_dir + '/cleaned/eight_k_tokens/'
+        self.p_news_year = par.data.base_data_dir + '/cleaned/news_year/'
+        self.p_news_token_year = par.data.base_data_dir + '/cleaned/news_token_year/'
 
+        os.makedirs(self.p_news_token_year,exist_ok=True)
+        os.makedirs(self.p_news_year,exist_ok=True)
+        os.makedirs(self.p_eight_k_token,exist_ok=True)
+        os.makedirs(self.p_eight_k_clean,exist_ok=True)
         os.makedirs(self.raw_dir,exist_ok=True)
         os.makedirs(self.p_dir,exist_ok=True)
 
@@ -530,7 +538,7 @@ class Data:
 
     def get_press_release_bool_per_event(self,reload = False):
         if reload:
-            load_dir = f'res/8k_clean/'
+            load_dir = self.p_eight_k_clean
             year_list = np.unique(np.sort([int(f.split('_')[1].split('.')[0]) for f in os.listdir(load_dir)]))
             id_cols = ['cik', 'form_id']
             df = pd.DataFrame()
@@ -547,6 +555,26 @@ class Data:
 
         df['cik']=df['cik'].astype(int)
         return df
+
+    def load_all_item_list_in_refinitiv(self):
+
+        '''
+        pip install xlrd
+
+        pip install openpyxl
+        '''
+
+        df_items = pd.DataFrame()
+        col_name = ["qcode", "qode" ,"desc"]
+        for sheet in ['News Topics', 'Attributions', 'Named Items', 'Product Codes']:
+            t = pd.read_excel('./data/refinitiv_help/NewsCodes_20230417.xls', sheet_name=sheet)
+            if t.shape[1]>3:
+                t=pd.concat([t.iloc[:,:2],t.iloc[:,[4]]],axis=1)
+            t.columns = col_name
+            df_items = pd.concat([df_items, t], axis=0)
+
+
+        return df_items
 
 if __name__ == "__main__":
     try:

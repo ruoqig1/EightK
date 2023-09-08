@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import pyperclip
 import tqdm
@@ -15,6 +17,9 @@ import sys
 from utils_local.zip import decompress_gz_file
 import re
 import json
+from pandarallel import pandarallel
+pandarallel.initialize(nb_workers=8)
+
 
 def find_all_instance_of_subject(subj, res):
     try:
@@ -39,6 +44,10 @@ def get_unique_tickers(list_of_list):
 if __name__ == "__main__":
     args = didi.parse()
 
+    print(args.para)
+    if args.para ==1:
+        pandarallel.initialize(nb_workers=8, progress_bar=True)
+
     par = Params()
     data = Data(par)
     all_items = data.load_all_item_list_in_refinitiv()
@@ -52,7 +61,8 @@ if __name__ == "__main__":
     # years_todo = [2006]
     df_sample_to_save = pd.DataFrame()
 
-    for year in tqdm.tqdm(years_todo):
+    for year in years_todo:
+        print('Start working on year',year)
         save_dir = 'temp/luci/'
         os.makedirs(save_dir,exist_ok=True)
 
@@ -72,9 +82,16 @@ if __name__ == "__main__":
         # res.loc[ind,:].to_csv(save_dir+f'news_{year}.csv')
         # pd.Series(a).to_csv(save_dir+f'ticker_in_headline_{year}.csv')
         # pd.Series(b).to_csv(save_dir+f'ticker_in_body_{year}.csv')
+        print('start the costly apply',flush=True)
 
-        df_items[year]=df_items['qode'].apply(find_all_instance_of_subject,res=res)
-
+        if args.para==1:
+            # Use parallel_apply instead of the regular apply or progress_apply
+            df_items['year'] = df_items['qode'].parallel_apply(find_all_instance_of_subject, res=res)
+        else:
+            tqdm.tqdm.pandas()
+            df_items['year'] = df_items['qode'].progress_apply(find_all_instance_of_subject, res=res)
+        # df_items[year]=df_items['qode'].apply(find_all_instance_of_subject,res=res)
+        print('done',flush=True)
         res['year'] = year
         nb_sample_per_year = int(1e5)
         df_sample_to_save = pd.concat([df_sample_to_save,res.sample(nb_sample_per_year)],axis=0)

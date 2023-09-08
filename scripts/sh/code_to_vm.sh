@@ -2,6 +2,7 @@
 scp *.py ADIDISHEIM@vm-172-26-151-77.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/
 scp utils_local/*.py ADIDISHEIM@vm-172-26-151-77.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/utils_local
 scp scripts/slurm/* ADIDISHEIM@vm-172-26-151-77.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/
+scp clean/*.py ADIDISHEIM@vm-172-26-151-77.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/
 # scp summary_stat/* ADIDISHEIM@vm-172-26-151-77.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/summary_stat/
 
 

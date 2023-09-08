@@ -35,13 +35,14 @@ class OptModelType(Enum):
 
 
 class Constant:
-    if socket.gethostname() in ['HEC37827','3330L-214940-M','rdl-orlr7x.desktop.cloud.unimelb.edu.au']:
+    if socket.gethostname() in ['HEC37827','3330L-214940-M']:
         # main_dir = '/media/antoine/ssd_ntfs//wsj_openai/'
         MAIN_DIR = './'
+    elif socket.gethostname() in ['rdl-orlr7x.desktop.cloud.unimelb.edu.au']:
+        MAIN_DIR = '/mnt/layline/project/eightk/'
     else:
         MAIN_DIR = '/data/gpfs/projects/punim2039/EightK/'
         HUGGING_DIR = '/data/gpfs/projects/punim2039/hugging/'
-
 
     FRED_API = 'cfc526395a5631650ec0b7ee96b149f4'
 
