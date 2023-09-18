@@ -1,18 +1,30 @@
 #!/bin/bash -l
-#SBATCH --job-name single
-#SBATCH --output=/home/unimelb.edu.au/adidisheim/EightK/out/single.out
-#SBATCH --error=/home/unimelb.edu.au/adidisheim/EightK/out/single.err
-#SBATCH --chdir=/home/unimelb.edu.au/adidisheim/EightK
+#SBATCH --job-name="clean_eight_k"
+#SBATCH --output=/home/adidishe/EightK/out/single.out
+#SBATCH --error=/home/adidishe/EightK/out/single.err
+#SBATCH --chdir=/home/adidishe/EightK
 
+# Partition for the job:
+#SBATCH --partition=cascade
+#SBATCH --account="punim2039"
 #SBATCH --mail-type=ALL # notifications for job start, end, and failure
 #SBATCH --mail-user=antoine.didisheim@unimelb.edu.au
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
 
-#SBATCH --nodes 1
-#SBATCH --ntasks 1
-#SBATCH --mem 30G
-#SBATCH --cpus-per-task 8
-#SBATCH --time 24:00:00
 
-source /home/unimelb.edu.au/adidisheim/EightK/venv/bin/activate
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=15G
+#SBATCH --cpus-per-task=4
+#SBATCH --time=0-0:10:00
 
-python3 wip.py
+module load foss/2022a
+module load GCC/11.3.0
+module load CUDA/11.7.0
+module load GCCcore/11.3.0; module load Python/3.10.4
+
+source /home/adidishe/EightK/venv/bin/activate
+
+python3 news_02_refinitive_to_bow.py

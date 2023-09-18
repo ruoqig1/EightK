@@ -17,6 +17,7 @@ import os
 
 class NewsSource(Enum):
     WSJ = 'wsj'
+    EIGHT_LEGAL ='eight_legal'
 
 class OptModelType(Enum):
     OPT_125m ='facebook/opt-125M'
@@ -38,8 +39,10 @@ class Constant:
     if socket.gethostname() in ['HEC37827','3330L-214940-M']:
         # main_dir = '/media/antoine/ssd_ntfs//wsj_openai/'
         MAIN_DIR = './'
+        HUGGING_DIR = None
     elif socket.gethostname() in ['rdl-orlr7x.desktop.cloud.unimelb.edu.au']:
         MAIN_DIR = '/mnt/layline/project/eightk/'
+        HUGGING_DIR = None
     else:
         MAIN_DIR = '/data/gpfs/projects/punim2039/EightK/'
         HUGGING_DIR = '/data/gpfs/projects/punim2039/hugging/'
@@ -48,7 +51,7 @@ class Constant:
 
     DROP_RES_DIR = '/Users/adidisheim/Dropbox/Apps/Overleaf/EightKEarlyAnalysis/'
 
-    LIST_ITEMS_TO_USE = [1.01, 1.02, 1.03, 1.04, 2.01, 2.03, 2.04, 2.05, 2.06, 3.02, 3.03, 4.01, 4.02, 5.01, 5.02, 5.03, 5.04, 5.05, 5.06, 5.07, 5.08, 6.01, 6.02, 6.03, 6.04, 6.05, 7.01, 8.01, 9.01]
+    LIST_ITEMS_TO_USE = [1.01, 1.02, 1.03, 1.04, 2.01, 2.03, 2.04, 2.05, 2.06, 3.02, 3.03, 4.01, 4.02, 5.01, 5.02, 5.03, 5.04, 5.05, 5.06, 5.07, 5.08, 6.01, 6.02, 6.03, 6.04, 6.05, 7.01, 8.01]
     LIST_ITEMS_FULL = [1.01, 1.02, 1.03, 1.04, 2.01, 2.02, 2.03, 2.04, 2.05, 2.06, 3.01, 3.02, 3.03, 4.01, 4.02, 5.01, 5.02, 5.03, 5.04, 5.05, 5.06, 5.07, 5.08, 6.01, 6.02, 6.03, 6.04, 6.05, 7.01, 8.01, 9.01]
 
     SECTIONS = {
@@ -159,6 +162,13 @@ class Params:
         self.enc = EncodingParams()
         self.train = TrainerParams()
         self.rf = RandomFeaturesParams()
+
+    def get_vec_process_dir(self):
+        # create the directory
+        save_dir = Constant.MAIN_DIR + f'data/vec_process/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+        print('Gonna save in',save_dir,flush=True)
+        os.makedirs(save_dir, exist_ok=True)
+        return save_dir
 
     def get_encoding_save_name(self, temp_dir = False):
         if temp_dir:

@@ -20,14 +20,29 @@ if __name__ == "__main__":
 
     par = Params()
     data = Data(par)
+    print(args.a)
+    print(args.thirdparty)
+    print('--------',flush=True)
+    # check if we are doing third party or not
+    load_start = data.p_news_year if args.thirdparty == 0 else data.p_news_third_party_year
+    save_start = data.p_news_token_year if args.thirdparty == 0 else data.p_news_third_party_token_year
 
-    year_list = np.unique(np.sort([int(f.split('_')[1].split('.')[0]) for f in os.listdir(data.p_news_year)]))  #28 variations
+    year_list = np.unique(np.sort([int(f.split('_')[1].split('.')[0]) for f in os.listdir(load_start)]))  #28 variations
+    print('YEAR LIST', year_list)
+    print(args.a,type(args.a))
     year_todo = year_list[args.a]
+    print('here')
 
     type_txt = 'ref_'# if args.legal ==0 else 'press_'
     f_name = f'{type_txt}{year_todo}.p'
 
-    df = pd.read_pickle(data.p_news_year+f_name).reset_index(drop=True)
+    print('START WORKING ON')
+    print('Year',year_todo)
+    print(f'Type of news, args.thirdparty={args.thirdparty}',flush=True)
+
+
+
+    df = pd.read_pickle(load_start+f_name).reset_index(drop=True)
     res = df[['id']].copy()
     txt_type = ['body','headline']
     for c in txt_type:
@@ -40,9 +55,12 @@ if __name__ == "__main__":
             # Perform the cleaning steps
             bow = clean_from_txt_to_bow(txt)
             res.loc[i,c] = json.dumps(bow)
+            if i in [0,10,100]:
+                print(i,bow,flush=True)
+                print('#'*50)
         # code to get the dict again.
         # type(Counter(json.loads(json.dumps(bow))))
-    res.to_pickle(data.p_news_token_year+f_name)
+    res.to_pickle(save_start+f_name)
 
 
 

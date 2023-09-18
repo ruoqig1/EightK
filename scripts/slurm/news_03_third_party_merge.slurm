@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH --job-name news_merge
-#SBATCH --output=/home/adidishe/EightK/out/news_merge_%a.out
-#SBATCH --error=/home/adidishe/EightK/out/news_merge_%a.err
+#SBATCH --job-name third_party
+#SBATCH --output=/home/adidishe/EightK/out/third_party_%a.out
+#SBATCH --error=/home/adidishe/EightK/out/third_party_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
 #SBATCH --array=0-28
 
@@ -16,4 +16,4 @@
 
 source /home/adidishe/EightK/venv/bin/activate
 
-python3 news_01_refintiv_merge.py ${SLURM_ARRAY_TASK_ID}
+python3 news_03_third_party_merge.py ${SLURM_ARRAY_TASK_ID}

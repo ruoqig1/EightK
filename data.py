@@ -1,6 +1,8 @@
 import os
 import time
 import datetime
+
+import pyperclip
 import yfinance as yf
 
 import numpy as np
@@ -40,8 +42,17 @@ class Data:
         self.p_eight_k_clean = par.data.base_data_dir + '/cleaned/eight_k_first_process/'
         self.p_eight_k_token = par.data.base_data_dir + '/cleaned/eight_k_tokens/'
         self.p_news_year = par.data.base_data_dir + '/cleaned/news_year/'
+        self.p_news_third_party_year = par.data.base_data_dir + '/cleaned/news_year_third_party/'
         self.p_news_token_year = par.data.base_data_dir + '/cleaned/news_token_year/'
+        self.p_news_third_party_token_year = par.data.base_data_dir + '/cleaned/news_third_party_token_year/'
+        self.p_vec_refinitiv = par.data.base_data_dir + '/vector/refinitiv/'
+        self.p_vec_third_party = par.data.base_data_dir + '/vector/third_party/'
 
+        os.makedirs(self.p_vec_refinitiv,exist_ok=True)
+        os.makedirs(self.p_vec_third_party,exist_ok=True)
+
+        os.makedirs(self.p_news_third_party_token_year,exist_ok=True)
+        os.makedirs(self.p_news_third_party_year,exist_ok=True)
         os.makedirs(self.p_news_token_year,exist_ok=True)
         os.makedirs(self.p_news_year,exist_ok=True)
         os.makedirs(self.p_eight_k_token,exist_ok=True)
@@ -587,3 +598,4 @@ if __name__ == "__main__":
     self = Data(Params())
     reload = True
 
+    self

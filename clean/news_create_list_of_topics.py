@@ -15,95 +15,105 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import sys
 from utils_local.zip import decompress_gz_file
-import re
 import json
-from pandarallel import pandarallel
-pandarallel.initialize(nb_workers=8)
+import glob
+import itertools
+import re
+from utils_local.zip import decompress_gz_file, unzip_all
+
+##### THIRD PARTY!!!
 
 
-def find_all_instance_of_subject(subj, res):
-    try:
-        subj = str(subj)
-        ind=res['subjects'].apply(lambda x: any([subj in xx for xx in x]))
-        ind = ind.sum()
-    except:
-        ind = np.nan
-    return ind
+def main(args):
+    for do_third_party in [0, 1]:
+        print('#' * 50)
+        print('do_third_party', do_third_party)
+        print('#' * 50, flush=True)
+        load_start = data.p_news_year if do_third_party == 0 else data.p_news_third_party_year
+        # year_list = np.unique(np.sort([int(f.split('_')[1].split('.')[0]) for f in os.listdir(load_start)]))  # 28 variations
+        # year_list = np.arange(1996,2023,1)
+        month_full_list = os.listdir(load_start)
+        month_todo = [month_full_list[args.a]]
+        print(args.a, type(args.a))
+        # year_todo = year_list[args.a]
 
-def find_tickers_in_markup(text):
-    return re.findall(r'<(.*?)>', text)
+        for month in month_todo:
+            month_nb = month.split('-')[1].split('.p')[0]
+            year_todo = month.split('-')[0].split('_')[1]
+            print('Start month', month_nb, flush=True)
+            save_name = f'refi_{year_todo}-{month_nb}_' if do_third_party == 0 else f'third_party_{year_todo}-{month_nb}_'
 
-def find_tickers_in_square_brackets(text):
-    return re.findall(r'\[(.*?)\]', text)
-def get_unique_tickers(list_of_list):
-    # Concatenate all the lists
-    concatenated_tickers = list(itertools.chain.from_iterable(list_of_list))
-    t=np.unique(concatenated_tickers)
-    return list(t)
+            df = pd.read_pickle(load_start + f'{month}')
+            df = df.reset_index(drop=True)
+
+            # Index(['source', 'name', 'timestamp', 'id', 'body', 'mimeType', 'firstCreated', 'versionCreated', 'takeSequence', 'pubStatus', 'language', 'altId', 'headline', 'subjects', 'audiences', 'provider', 'instancesOf', 'urgency'],
+            #       dtype='object')
+
+            tickers = df['subjects'].apply(lambda x: [xx.replace('R:', '') for xx in x if 'R:' in xx])
+            subjects = df['subjects'].apply(lambda x: [xx for xx in x if 'R:' not in xx])
+            audiences = df['audiences'].apply(lambda x: [xx for xx in x if 'R:' not in xx])
+            provider = df['provider'].apply(lambda x: [xx for xx in x if 'R:' not in xx])
+
+            unique_tickers = list(np.unique(list(itertools.chain.from_iterable(tickers))))
+            pd.Series(unique_tickers).to_pickle(save_dir + save_name + '_tickers.p')
+            print('save to,', save_dir + save_name + '_tickers.p')
+
+            if not Constant.IS_VM:
+                res = pd.Series()
+                for c in [provider, audiences, subjects]:
+                    un = list(np.unique(list(itertools.chain.from_iterable(c))))
+                    print('unique', len(un))
+                    cnt_dict = {x: c.astype('str').str.contains(x).sum() for x in tqdm.tqdm(un)}
+                    res = pd.concat([res, pd.Series(cnt_dict)], axis=0, ignore_index=False)
+                res.to_pickle(save_dir + save_name + '_count.p')
+                print('save to,', save_dir + save_name + '_count.p')
+
 
 if __name__ == "__main__":
-    args = didi.parse()
+    args = didi.parse()  # 27 variations
 
-    print(args.para)
-    if args.para ==1:
-        pandarallel.initialize(nb_workers=8, progress_bar=True)
+    data = Data(Params())
+    reload = True
 
-    par = Params()
-    data = Data(par)
-    all_items = data.load_all_item_list_in_refinitiv()
-    unique_body = []
-    unique_headline = []
-    # for year in [1999,2006,2022]:
-    # for year in range(1996,2023):
-    # all the items
-    df_items = data.load_all_item_list_in_refinitiv()
-    years_todo = list(np.arange(1996,2023,1))
-    # years_todo = [2006]
-    df_sample_to_save = pd.DataFrame()
+    save_dir = Constant.MAIN_DIR + 'res/ss/tickers_and_groups/'
+    os.makedirs(save_dir, exist_ok=True)
 
-    for year in years_todo:
-        print('Start working on year',year)
-        save_dir = 'temp/luci/'
-        os.makedirs(save_dir,exist_ok=True)
+    if Constant.IS_VM:
+        for i in tqdm.tqdm(range(324)):
+            args.a = i
+            main(args)
+        os.listdir(save_dir)
 
-        df = pd.read_pickle(data.p_news_year+f'ref_{year}.p').reset_index(drop=True)
-
-        ticker_headline = df['headline'].apply(find_tickers_in_markup)
-        ticker_body = df['body'].apply(find_tickers_in_markup)
-        a=get_unique_tickers(ticker_headline)
-        b=get_unique_tickers(ticker_body)
-        unique_headline = unique_headline + a
-        unique_body = unique_body + b
-
-        res=df[['body','headline','subjects','instancesOf']].copy()
-        res['ticker_headline'] = ticker_headline
-        res['ticker_body'] = ticker_body
-        ind = (res['ticker_headline'].apply(len)>0) | (res['ticker_body'].apply(len)>0)
-        # res.loc[ind,:].to_csv(save_dir+f'news_{year}.csv')
-        # pd.Series(a).to_csv(save_dir+f'ticker_in_headline_{year}.csv')
-        # pd.Series(b).to_csv(save_dir+f'ticker_in_body_{year}.csv')
-        print('start the costly apply',flush=True)
-
-        if args.para==1:
-            # Use parallel_apply instead of the regular apply or progress_apply
-            df_items['year'] = df_items['qode'].parallel_apply(find_all_instance_of_subject, res=res)
+    else:
+        if int(args.a) > 0:
+            main(args)
         else:
-            tqdm.tqdm.pandas()
-            df_items['year'] = df_items['qode'].progress_apply(find_all_instance_of_subject, res=res)
-        # df_items[year]=df_items['qode'].apply(find_all_instance_of_subject,res=res)
-        print('done',flush=True)
-        res['year'] = year
-        nb_sample_per_year = int(1e5)
-        df_sample_to_save = pd.concat([df_sample_to_save,res.sample(nb_sample_per_year)],axis=0)
+            df_refi = None
+            df_third = None
+            for f in [x for x in os.listdir(save_dir) if '_count' in x]:
+                print(f)
+                month = f.split('-')[1].split('__')[0]
+                year = f.split('-')[0].split('_')[-1]
+                t= pd.read_pickle(save_dir+f).reset_index().rename(columns={'index':'born',0:int(f'{year}{month}')})
+                if 'refi' in f:
+                    if df_refi is None:
+                        df_refi = t
+                    else:
+                        df_refi=df_refi.merge(t,how='outer')
+                else:
+                    if df_third is None:
+                        df_third = t
+                    else:
+                        df_third=df_third.merge(t,how='outer')
 
-    a=list(np.unique(unique_headline))
-    b=list(np.unique(unique_body))
+            final_dir = Constant.MAIN_DIR+'res/list_usage/'
+            os.makedirs(final_dir,exist_ok=True)
 
-    pd.Series(a).to_csv(save_dir + f'ticker_in_headline_all.csv')
-    pd.Series(b).to_csv(save_dir + f'ticker_in_body_all.csv')
-    df_sample_to_save.to_csv(save_dir + f'sample_news.csv')
-
-    df_items['tot']=df_items[years_todo].sum(1)
-    df_items.to_csv(save_dir + f'items_with_counts.csv')
-
-
+            for i, df in enumerate([df_refi,df_third]):
+                df =df.fillna(0.0)
+                l= list(np.sort(df.columns[1:]))
+                df['tot'] =  df[l].sum(1)
+                df=df[['born','tot']+l]
+                df=df.sort_values('tot')
+                df.to_csv(final_dir+f'list_{i}.csv')
+                print(f'Saving {i}')
