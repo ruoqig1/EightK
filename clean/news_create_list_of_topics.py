@@ -20,7 +20,7 @@ import glob
 import itertools
 import re
 from utils_local.zip import decompress_gz_file, unzip_all
-
+from utils_local.nlp_ticker import *
 ##### THIRD PARTY!!!
 
 
@@ -76,13 +76,56 @@ if __name__ == "__main__":
     reload = True
 
     save_dir = Constant.MAIN_DIR + 'res/ss/tickers_and_groups/'
+    ss_dir = Constant.MAIN_DIR + 'res/ss/'
+    os.makedirs(ss_dir, exist_ok=True)
     os.makedirs(save_dir, exist_ok=True)
 
     if Constant.IS_VM:
         for i in tqdm.tqdm(range(324)):
             args.a = i
             main(args)
-        os.listdir(save_dir)
+        s = pd.Series()
+        for f in os.listdir(save_dir):
+            t = pd.read_pickle(save_dir+f)
+            s=pd.concat([s,t],axis=0)
+        s.drop_duplicates().to_pickle(ss_dir+'ticker_all.p')
+
+        ind = s.str.contains('.')
+        s = s.loc[ind]
+        ind = s.apply(lambda x: len(x.split('.'))) == 2
+        s = s.loc[ind]
+
+        ticker = s.apply(lambda x: x.split('.')[0])
+        market = s.apply(lambda x: x.split('.')[1])
+
+        df = s.reset_index().rename(columns={0: 'full'})
+        df['ticker'] = ticker.values
+        df['market'] = market.values
+        t = df.groupby('ticker')['market'].count().sort_values(ascending=False)
+
+        # drop the numbers ones
+        ind = df['ticker'].apply(has_numbers)
+        df = df.loc[~ind, :]
+
+        # remove the case wher ethe lower case indicate type of shares
+        ind = df['ticker'].apply(has_mixed_case)
+        df.loc[ind, 'ticker'] = df.loc[ind, 'ticker'].apply(remove_lowercase)
+
+        # remove the ipos
+        for var in ['IPO-', 'IPO-']:
+            ind = df['ticker'].str.contains('-IPO')
+            df.loc[ind, 'ticker'] = df.loc[ind, 'ticker'].apply(lambda x: x.split(var)[0])
+
+        # remove weird symbols
+        ind = df['ticker'].apply(has_weird_symbols)
+        df.loc[ind, 'ticker'] = df.loc[ind, 'ticker'].apply(remove_weird_symbols)
+
+        tickers_in_news = df['ticker'].str.upper().drop_duplicates()
+
+        tickers_in_crsp = data.load_crsp_daily()['ticker'].drop_duplicates()
+
+        ticker_in_both = tickers_in_news[tickers_in_news.isin(tickers_in_crsp)]
+        ticker_in_both.to_pickle(data.p_dir+'ticker_in_news_and_crsp.p')
 
     else:
         if int(args.a) > 0:

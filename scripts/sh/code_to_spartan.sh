@@ -9,3 +9,5 @@ scp summary_stat/* adidishe@spartan.hpc.unimelb.edu.au:/home/adidishe/EightK/
 
 # Print the current time
 echo "Pushed at $(date +'%H:%M')"
+
+scp  /Users/adidisheim/Dropbox/Melbourne/research/EightK/data/p/ticker_in_news_and_crsp.p  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/

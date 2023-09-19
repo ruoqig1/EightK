@@ -52,6 +52,12 @@ def load_and_process_eight_k_legal(par,args):
     df['len']=df['txt'].apply(lambda x:len(str(x)))
     ind = df.groupby(id_col)['len'].transform('max')==df['len']
     df = df.loc[ind,:].reset_index(drop=True)
+    #remove the duplicates that have same lengths of text arbitrairly
+    while df[id_col].duplicated().sum()!=0:
+        ind = ~df[id_col].duplicated()
+        df = df.loc[ind,:].reset_index(drop=True)
+
+
     return id_col,save_size,batch_size,year,df
 
 
@@ -61,6 +67,7 @@ if __name__ == "__main__":
     # BUILD THE MODEL AND DEFINE PARAMETERS
     par = Params()
     if socket.gethostname() == '3330L-214940-M':
+        # (local debug)
         par.enc.opt_model_type = OptModelType.OPT_125m
         batch_size = 2
 
@@ -70,9 +77,6 @@ if __name__ == "__main__":
 
         # launch the vectorisation
         vectorise_in_batch(id_col=id_col, df=df, save_size=save_size, batch_size=batch_size, par=par, year=year)
-
-
-
     else:
         par.enc.opt_model_type = OptModelType.OPT_13b
         batch_size = 2

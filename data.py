@@ -42,12 +42,14 @@ class Data:
         self.p_eight_k_clean = par.data.base_data_dir + '/cleaned/eight_k_first_process/'
         self.p_eight_k_token = par.data.base_data_dir + '/cleaned/eight_k_tokens/'
         self.p_news_year = par.data.base_data_dir + '/cleaned/news_year/'
+        self.p_news_tickers_related = par.data.base_data_dir + '/cleaned/news_tickers_related/'
         self.p_news_third_party_year = par.data.base_data_dir + '/cleaned/news_year_third_party/'
         self.p_news_token_year = par.data.base_data_dir + '/cleaned/news_token_year/'
         self.p_news_third_party_token_year = par.data.base_data_dir + '/cleaned/news_third_party_token_year/'
         self.p_vec_refinitiv = par.data.base_data_dir + '/vector/refinitiv/'
         self.p_vec_third_party = par.data.base_data_dir + '/vector/third_party/'
 
+        os.makedirs(self.p_news_tickers_related,exist_ok=True)
         os.makedirs(self.p_vec_refinitiv,exist_ok=True)
         os.makedirs(self.p_vec_third_party,exist_ok=True)
 
@@ -194,6 +196,10 @@ class Data:
         else:
             df = pd.read_pickle(self.p_dir + 'crsp_eightk.p')
         return df
+
+    def load_list_of_tickers_in_news_and_crsp(self):
+        r = pd.read_pickle(self.p_dir + 'ticker_in_news_and_crsp.p')
+        return r
 
     def load_ravenpack_to_permno_tr(self,reload=False):
         if reload:

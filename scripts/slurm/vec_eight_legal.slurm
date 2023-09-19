@@ -14,7 +14,7 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=7-0:0:00
+#SBATCH --time=0-10:0:00
 
 module load foss/2022a
 module load GCCcore/11.3.0; module load Python/3.10.4

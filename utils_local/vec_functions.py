@@ -73,7 +73,7 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
                 last_token_hidden_stage, _ = model.get_hidden_states_para(texts=txt_list)
                 res.loc[ind, 'vec_last'] = pd.Series(last_token_hidden_stage, index=ind)
             res.dropna().to_pickle(save_dest)
-            res = res.dropna()
+            res = res.loc[pd.isna(res.values)]
 #
 
 if __name__ == "__main__":
