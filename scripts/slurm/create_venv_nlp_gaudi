@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+module load python3/3.10.4
+
+
+virtualenv ~/scratch/nz97/ad4734/
+source ~/scratch/nz97/ad4734/
+

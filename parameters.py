@@ -2,7 +2,9 @@
 # Created by Antoine Didisheim, at 06.08.19
 # job: store default basic_parameters used throughout the projects in single .py
 
+import datetime
 import itertools
+import time
 from enum import Enum
 import numpy as np
 import pandas as pd
@@ -18,6 +20,18 @@ import os
 class NewsSource(Enum):
     WSJ = 'wsj'
     EIGHT_LEGAL ='eight_legal'
+    EIGHT_PRESS ='eight_press'
+
+class PredModel(Enum):
+    RIDGE = 'RIDGE'
+    LOGIT_EN ='LOGIT_EN'
+
+class Normalisation(Enum):
+    NO = 'no'
+    RANK ='RANK'
+    ZSCORE ='ZSCORE'
+    MINMAX ='MINMAX'
+
 
 class OptModelType(Enum):
     OPT_125m ='facebook/opt-125M'
@@ -119,7 +133,7 @@ class DataParams:
 class EncodingParams:
     def __init__(self):
         self.opt_model_type = OptModelType.OPT_125m
-        self.news_source = NewsSource.WSJ
+        self.news_source = NewsSource.EIGHT_LEGAL
 
         #params related to running the encoding
         self.nb_chunks = 100
@@ -143,12 +157,16 @@ class TrainerParams:
         self.T_val = 36
         self.testing_window = 1
         self.shrinkage_list = np.linspace(1e-12,10,50)
+
+        self.pred_model = PredModel.RIDGE
+        self.norm = Normalisation.ZSCORE
         self.save_ins = False
+
 
         # this is the number of individual saving chunks.
         # by this we mean the number of individual df contianing some oos performance that will be saved before merged.
         # too big and we risk loosing some processing, too small and we will make a mess of the merging process.
-        self.nb_chunks = 25
+        self.nb_chunks = 20
         #
         self.min_nb_chunks_in_cluster = 10
 
@@ -162,11 +180,55 @@ class Params:
         self.enc = EncodingParams()
         self.train = TrainerParams()
         self.rf = RandomFeaturesParams()
+        self.model_ran_dir = Constant.MAIN_DIR+'res/model_ran/'
 
     def get_vec_process_dir(self):
         # create the directory
         save_dir = Constant.MAIN_DIR + f'data/vec_process/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
-        print('Gonna save in',save_dir,flush=True)
+        os.makedirs(save_dir, exist_ok=True)
+        return save_dir
+
+    def save_model_params_in_main_file(self):
+        os.makedirs(self.model_ran_dir,exist_ok=True)
+        # Get current date and time
+        now = datetime.datetime.now()
+        # Format it into a string suitable for a filename
+
+        k = max([int(x.split('_')[1]) for x in os.listdir(self.model_ran_dir)])+1
+        formatted_date = now.strftime("%Y-%m-%d")+f'_{k}'
+        self.save(save_dir=self.model_ran_dir,file_name=formatted_date)
+        print('Saved models params in',self.model_ran_dir+formatted_date,flush=True)
+
+    def load_model_params_in_main_file(self,k=None,date=None):
+        last_k = max([int(x.split('_')[1]) for x in os.listdir(self.model_ran_dir)])
+        k_dict = {int(x.split('_')[1]):x for x in os.listdir(self.model_ran_dir)}
+        date_dict = {x.split('_')[0]:x for x in os.listdir(self.model_ran_dir)}
+
+        if (k is None) & (date is None):
+            #load the last version
+            self.load(load_dir=self.model_ran_dir,file_name=k_dict[last_k])
+        if (k is not None):
+            self.load(load_dir=self.model_ran_dir,file_name=k_dict[k])
+        if (date is not None):
+            self.load(load_dir=self.model_ran_dir,file_name=date_dict[date])
+
+    def get_res_dir(self,temp=True):
+        # create the directory
+        d = self.train.__dict__
+        s=''
+        for k in d.keys():
+            v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
+            s+= f'{k}{v}'
+
+        temp_str = '/temp'if temp else ''
+        save_dir = Constant.MAIN_DIR + f'res{temp_str}/vec_pred/{s}/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+        os.makedirs(save_dir, exist_ok=True)
+        return save_dir
+
+
+    def get_training_dir(self):
+        # create the directory
+        save_dir = Constant.MAIN_DIR + f'data/training/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
 

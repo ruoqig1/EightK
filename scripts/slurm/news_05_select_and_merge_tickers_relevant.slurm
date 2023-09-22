@@ -18,7 +18,7 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=90G
+#SBATCH --mem=120G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=0-6:00:00
 
@@ -28,4 +28,4 @@ module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 news_05_select_and_merge_tickers_relevant.py ${SLURM_ARRAY_TASK_ID} --thirdparty=1
+python3 news_05_select_and_merge_tickers_relevant.py ${SLURM_ARRAY_TASK_ID}

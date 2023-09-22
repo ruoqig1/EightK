@@ -69,7 +69,13 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
             # system to do in a few batch
             index_todo = np.array_split(save_chunk_of_index[save_id], int(np.ceil(len(save_chunk_of_index[save_id]) / batch_size)))
             for ind in tqdm.tqdm(index_todo, f'Tokenise {save_dest}'):
-                txt_list = list(df.loc[ind, 'txt'].values)
+                txt_list_raw = list(df.loc[ind, 'txt'].values)
+                txt_list = []
+                for i in range(len(txt_list_raw)):
+                    if txt_list_raw[i] in [None, '']:
+                        txt_list.append(' ')
+                    else:
+                        txt_list.append(txt_list_raw[i].encode('utf-8', 'ignore').decode('utf-8'))
                 last_token_hidden_stage, _ = model.get_hidden_states_para(texts=txt_list)
                 res.loc[ind, 'vec_last'] = pd.Series(last_token_hidden_stage, index=ind)
             res.dropna().to_pickle(save_dest)
@@ -77,6 +83,5 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
 #
 
 if __name__ == "__main__":
-
     pass
 

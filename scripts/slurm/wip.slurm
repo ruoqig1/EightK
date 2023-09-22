@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH --job-name="single"
-#SBATCH --output=/home/adidishe/EightK/out/s.out
-#SBATCH --error=/home/adidishe/EightK/out/s.err
+#SBATCH --job-name="wip"
+#SBATCH --output=/home/adidishe/EightK/out/wip.out
+#SBATCH --error=/home/adidishe/EightK/out/wip.err
 #SBATCH --chdir=/home/adidishe/EightK
 
 # Partition for the job:
@@ -16,7 +16,7 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=120G
+#SBATCH --mem=150G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=0-10:00:00
 
@@ -26,4 +26,4 @@ module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 news_create_list_of_topics_02.py
+python3 wip.py

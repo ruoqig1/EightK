@@ -16,6 +16,11 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --time=0-10:0:00
 
+#SBATCH --mail-user=antoine.didisheim@unimelb.edu.au
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
+
 module load foss/2022a
 module load GCCcore/11.3.0; module load Python/3.10.4
 module load  cuDNN/8.4.1.50-CUDA-11.7.0

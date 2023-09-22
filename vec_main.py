@@ -24,7 +24,7 @@ from utils_local.zip import decompress_gz_file, unzip_all
 from utils_local.vec_functions import vectorise_in_batch
 
 
-def load_and_process_eight_k_legal(par,args):
+def load_and_process_eight_k_legal_or_pressed(par, args, press_or_legal ='legal'):
     save_size = 1000
     # load and pre process data (code specific)
     data = Data(par)
@@ -33,7 +33,7 @@ def load_and_process_eight_k_legal(par,args):
     ev= ev[['cik','form_id']].drop_duplicates()
     year = np.arange(2004,2023)[args.a]
     # load the raw text of the year
-    df=pd.read_pickle(data.p_eight_k_clean+f'legal_{year}.p')
+    df=pd.read_pickle(data.p_eight_k_clean+f'{press_or_legal}_{year}.p')
     #make the dtypes match for the merge
     df['cik']=df['cik'].astype(int)
     sh = df.shape[0]
@@ -42,23 +42,25 @@ def load_and_process_eight_k_legal(par,args):
     print('Droped',df.shape[0]/sh)
     print('Left',df.shape[0])
 
-    df['item'] = pd.to_numeric(df['item'],errors='coerce')
-    ind = df['item'].isin(Constant.LIST_ITEMS_TO_USE)
-    df = df.loc[ind,:]
+    if press_or_legal=='legal':
+        df['item'] = pd.to_numeric(df['item'],errors='coerce')
+        ind = df['item'].isin(Constant.LIST_ITEMS_TO_USE)
+        df = df.loc[ind,:]
+        id_col = ['cik','form_id','item']
+        # remove the text that have been extracted from multiple sources
+        df['len'] = df['txt'].apply(lambda x: len(str(x)))
+        ind = df.groupby(id_col)['len'].transform('max') == df['len']
+        df = df.loc[ind, :].reset_index(drop=True)
+        # remove the duplicates that have same lengths of text arbitrairly
+        while df[id_col].duplicated().sum() != 0:
+            ind = ~df[id_col].duplicated()
+            df = df.loc[ind, :].reset_index(drop=True)
+    else:
+        id_col = ['cik','form_id','k']
     df=df.drop_duplicates()
-
-    # remove the text that have been extracted from multiple sources
-    id_col = ['cik','form_id','item']
-    df['len']=df['txt'].apply(lambda x:len(str(x)))
-    ind = df.groupby(id_col)['len'].transform('max')==df['len']
-    df = df.loc[ind,:].reset_index(drop=True)
-    #remove the duplicates that have same lengths of text arbitrairly
-    while df[id_col].duplicated().sum()!=0:
-        ind = ~df[id_col].duplicated()
-        df = df.loc[ind,:].reset_index(drop=True)
-
-
     return id_col,save_size,batch_size,year,df
+
+
 
 
 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
         batch_size = 2
 
         par.enc.news_source = NewsSource.EIGHT_LEGAL
-        id_col, save_size, batch_size, year, df = load_and_process_eight_k_legal(par, args)
+        id_col, save_size, batch_size, year, df = load_and_process_eight_k_legal_or_pressed(par, args)
         save_size=10
 
         # launch the vectorisation
@@ -83,9 +85,24 @@ if __name__ == "__main__":
 
     if args.eight==1:
         if args.legal==1:
+            print('START EIGHT, LEGAL',flush=True)
             par.enc.news_source = NewsSource.EIGHT_LEGAL
-            id_col, save_size, batch_size, year, df = load_and_process_eight_k_legal(par,args)
+            id_col, save_size, batch_size, year, df = load_and_process_eight_k_legal_or_pressed(par, args,press_or_legal='legal')
 
             # launch the vectorisation
             vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
 
+    if args.eight==1:
+        if args.legal==0:
+            print('START EIGHT, PRESS',flush=True)
+            par.enc.news_source = NewsSource.EIGHT_PRESS
+            id_col, save_size, batch_size, year, df = load_and_process_eight_k_legal_or_pressed(par, args,press_or_legal='press')
+            # launch the vectorisation
+            vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
+
+
+    data = Data(par)
+    save_dir = data.p_to_vec_main_dir+'/single_stock_news_to_vec/'
+    years = np.unique(np.sort([int(x.split('_')[1].split('.')[0]) for x in os.listdir(save_dir)]))[args.a] # len 27
+    ref = pd.read_pickle(save_dir+f'ref_{years}.p')
+    third = pd.read_pickle(save_dir+f'third_{years}.p')

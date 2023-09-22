@@ -48,7 +48,10 @@ class Data:
         self.p_news_third_party_token_year = par.data.base_data_dir + '/cleaned/news_third_party_token_year/'
         self.p_vec_refinitiv = par.data.base_data_dir + '/vector/refinitiv/'
         self.p_vec_third_party = par.data.base_data_dir + '/vector/third_party/'
+        self.p_to_vec_main_dir = par.data.base_data_dir + '/to_vec/'
 
+
+        os.makedirs(self.p_to_vec_main_dir,exist_ok=True)
         os.makedirs(self.p_news_tickers_related,exist_ok=True)
         os.makedirs(self.p_vec_refinitiv,exist_ok=True)
         os.makedirs(self.p_vec_third_party,exist_ok=True)
@@ -593,6 +596,48 @@ class Data:
 
         return df_items
 
+    def load_return_for_nlp_on_eightk(self,reload=False):
+        if reload:
+            crsp = self.load_crsp_daily()
+            crsp['ret'] = pd.to_numeric(crsp['ret'], errors='coerce')
+            ev = self.load_list_by_date_time_permno_type()
+            ev = ev.rename(columns={'adate': 'date', 'atime': 'eight_time'})
+            ev['date'] = pd.to_datetime(ev['date'])
+
+            crsp['ret_f'] = crsp.groupby('permno')['ret'].shift(-1)
+            crsp['ret_l'] = crsp.groupby('permno')['ret'].shift(1)
+            crsp['ret_m'] = (crsp['ret'] + crsp['ret_f'] + crsp['ret_l']) / 3
+            big_l_col = []
+            for l in [5, 20, 60, 250]:
+                big_l_col.append(f'ret_{l}')
+                crsp[f'ret_{l}'] = crsp.groupby('permno')['ret'].apply(lambda x: x.rolling(window=l).mean()).reset_index(level=0, drop=True)
+                crsp[f'ret_{l}'] = crsp.groupby('permno')[f'ret_{l}'].shift(-(l + 1))
+
+            crsp = crsp[['permno', 'date', 'ticker', 'ret', 'ret_l', 'ret_f', 'ret_m'] + big_l_col].dropna(subset=['ret', 'ret_l', 'ret_f', 'ret_m'])
+
+            df = ev[['items', 'cik', 'form_id', 'date', 'ticker', 'eight_time']].merge(crsp)
+            ev = None;
+            crsp = None
+
+            rav = self.load_ravenpack_all()
+            # drop news and eightk before 16
+            ind = rav['rtime'].apply(lambda x: int(x[:2]) <= 16)
+            rav = rav.loc[ind, :]
+            rav['news0'] = (rav['relevance'] >= 1) * 1
+
+            rav = rav.groupby(['rdate', 'permno'])[['news0']].max().reset_index()
+            rav = rav.rename(columns={'rdate': 'date'})
+            rav['permno'] = rav['permno'].astype(int)
+
+            df = df.merge(rav, how='left')
+            df['news0'] = df['news0'].fillna(0.0)
+            df.to_pickle(self.p_dir+'load_return_for_nlp_on_eightk.p')
+        else:
+            df = pd.read_pickle(self.p_dir+'load_return_for_nlp_on_eightk.p')
+        return df
+
+
+
 if __name__ == "__main__":
     try:
         grid_id = int(sys.argv[1])
@@ -604,4 +649,4 @@ if __name__ == "__main__":
     self = Data(Params())
     reload = True
 
-    self
+

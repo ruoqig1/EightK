@@ -23,7 +23,8 @@ def clean_ticker(input_string,list_valid:list):
     if '.' not in input_string:
         return invalid_output
     else:
-        input_string  = input_string.split('.')[0]
+        input_string = input_string.split('.')[0]
+        market_string = input_string.split('.')[1]
     if len(input_string)==0:
         return invalid_output
     # remove the numbers ones
@@ -41,5 +42,16 @@ def clean_ticker(input_string,list_valid:list):
     # remove remaining weird symbols
     input_string = remove_weird_symbols(input_string)
     if input_string not in list_valid:
-        return invalid_output
+        return invalid_output, invalid_output
     return input_string
+
+
+
+def get_market(input_string):
+    invalid_output = ''
+    # drop the one without . and remove markets
+    if '.' not in input_string:
+        return invalid_output
+    else:
+        market_string = input_string.split('.')[1]
+    return market_string

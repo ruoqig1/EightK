@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH --job-name="single"
-#SBATCH --output=/home/adidishe/EightK/out/s.out
-#SBATCH --error=/home/adidishe/EightK/out/s.err
+#SBATCH --job-name="news_create_list_of_topics_02"
+#SBATCH --output=/home/adidishe/EightK/out/news_create_list_of_topics_02.out
+#SBATCH --error=/home/adidishe/EightK/out/news_create_list_of_topics_02.err
 #SBATCH --chdir=/home/adidishe/EightK
 
 # Partition for the job:
@@ -14,11 +14,12 @@
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
 
+
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=120G
+#SBATCH --mem=64G
 #SBATCH --cpus-per-task=4
-#SBATCH --time=0-10:00:00
+#SBATCH --time=0-12:00:00
 
 module load foss/2022a
 module load GCCcore/11.3.0; module load Python/3.10.4

@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH --job-name="single"
-#SBATCH --output=/home/adidishe/EightK/out/s.out
-#SBATCH --error=/home/adidishe/EightK/out/s.err
+#SBATCH --job-name="news_06"
+#SBATCH --output=/home/adidishe/EightK/out/news_06.out
+#SBATCH --error=/home/adidishe/EightK/out/news_06.err
 #SBATCH --chdir=/home/adidishe/EightK
 
 # Partition for the job:
@@ -26,4 +26,4 @@ module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 news_create_list_of_topics_02.py
+python3 news_06_create_to_vec_single_stock_news.py

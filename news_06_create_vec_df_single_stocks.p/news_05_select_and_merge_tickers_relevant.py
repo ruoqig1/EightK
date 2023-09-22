@@ -31,8 +31,6 @@ if __name__ == "__main__":
         df=df.loc[ind>0,:]
         tickers=tickers.loc[ind>0]
         tickers=tickers.apply(lambda x: [clean_ticker(xx,list_valid=list_valid) for xx in x])
-        # TODO ADD HERE THAT WE WANT TO KEEP THE US MARKETS ONLY
-
         tickers=tickers.apply(lambda x: [xx for xx in x if xx!=''])
         # reducing the tickers to final size now
         ind = tickers.apply(len)
