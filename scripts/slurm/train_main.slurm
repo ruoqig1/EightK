@@ -3,7 +3,7 @@
 #SBATCH --output=/home/adidishe/EightK/out/train_main_%a.out
 #SBATCH --error=/home/adidishe/EightK/out/train_main_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
-#SBATCH --array=0-14
+#SBATCH --array=0-89
 
 #SBATCH --mail-type=ALL # notifications for job start, end, and failure
 #SBATCH --mail-user=antoine.didisheim@unimelb.edu.au

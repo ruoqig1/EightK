@@ -55,9 +55,9 @@ def _expand_contractions(text):
 
 
 # Step 1: Remove proper nouns
-def _remove_proper_nouns(text):
-    tagged = pos_tag(word_tokenize(text))
-    return ' '.join([word for word, tag in tagged if tag != 'NNP' and tag != 'NNPS'])
+# def _remove_proper_nouns(text):
+#     tagged = pos_tag(word_tokenize(text))
+#     return ' '.join([word for word, tag in tagged if tag != 'NNP' and tag != 'NNPS'])
 
 
 # Step 2: Normalization
@@ -99,8 +99,8 @@ def _get_ngrams(tokens, n):
     return list(ngrams(tokens, n))
 
 def clean_from_txt_to_bow(txt, n=1):
-    cleaned_txt = _remove_proper_nouns(txt)
-    cleaned_txt = _normalize(cleaned_txt)
+    # cleaned_txt = _remove_proper_nouns(txt)
+    cleaned_txt = _normalize(txt)
     tokens = _tokenize(cleaned_txt)
     tokens = _stem_and_lemmatize(tokens)
     tokens = _remove_stopwords(tokens)

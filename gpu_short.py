@@ -13,7 +13,7 @@ import re
 from utils_local.nlp_tokenize_and_bow import clean_from_txt_to_bow
 import didipack as didi
 import json
-from utils_local.llm import OPTModel
+from utils_local.llm import EncodingModel
 import pandarallel
 
 if __name__ == "__main__":
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     else:
         par.enc.opt_model_type = OptModelType.OPT_13b
         k = 2
-    model = OPTModel(par)
+    model = EncodingModel(par)
 
     par = Params()
     data = Data(par)

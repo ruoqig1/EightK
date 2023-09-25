@@ -21,7 +21,7 @@ sudo cat << EOF > /etc/slurm-llnl/slurm.conf
 # See the slurm.conf man page for more information.
 #
 ClusterName=localcluster
-SlurmctldHost=localhostq
+SlurmctldHost=localhost
 MpiDefault=none
 ProctrackType=proctrack/linuxproc
 ReturnToService=2

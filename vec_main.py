@@ -19,7 +19,7 @@ import json
 import glob
 import itertools
 import re
-from utils_local.llm import OPTModel
+from utils_local.llm import EncodingModel
 from utils_local.zip import decompress_gz_file, unzip_all
 from utils_local.vec_functions import vectorise_in_batch
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     par = Params()
     if socket.gethostname() == '3330L-214940-M':
         # (local debug)
-        par.enc.opt_model_type = OptModelType.OPT_125m
+        par.enc.opt_model_type = OptModelType.BOW1
         batch_size = 2
 
         par.enc.news_source = NewsSource.EIGHT_LEGAL
@@ -82,6 +82,9 @@ if __name__ == "__main__":
     else:
         par.enc.opt_model_type = OptModelType.OPT_13b
         batch_size = 2
+
+    if args.bow==1:
+        par.enc.opt_model_type = OptModelType.BOW1
 
     if args.eight==1:
         if args.legal==1:
@@ -101,8 +104,8 @@ if __name__ == "__main__":
             vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
 
 
-    data = Data(par)
-    save_dir = data.p_to_vec_main_dir+'/single_stock_news_to_vec/'
-    years = np.unique(np.sort([int(x.split('_')[1].split('.')[0]) for x in os.listdir(save_dir)]))[args.a] # len 27
-    ref = pd.read_pickle(save_dir+f'ref_{years}.p')
-    third = pd.read_pickle(save_dir+f'third_{years}.p')
+    # data = Data(par)
+    # save_dir = data.p_to_vec_main_dir+'/single_stock_news_to_vec/'
+    # years = np.unique(np.sort([int(x.split('_')[1].split('.')[0]) for x in os.listdir(save_dir)]))[args.a] # len 27
+    # ref = pd.read_pickle(save_dir+f'ref_{years}.p')
+    # third = pd.read_pickle(save_dir+f'third_{years}.p')

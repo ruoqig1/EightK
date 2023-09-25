@@ -49,7 +49,7 @@ if __name__ == "__main__":
     final_dir2 = Constant.MAIN_DIR+'res/list_usage2/'
     os.makedirs(final_dir2, exist_ok=True)
     min_obs = 1000
-    nb_sample =10
+    nb_sample =25
     # 0 = refi, 1 = 3rdparty
     for refi_id, f in enumerate(os.listdir(final_dir)):
         start_dir = data.p_news_year if refi_id==0 else data.p_news_third_party_year
@@ -75,16 +75,19 @@ if __name__ == "__main__":
                 curent_ym = np.random.choice(m,1)[0]
                 base = [x.split('_')[0] for x in os.listdir(start_dir)][0]
                 news=pd.read_pickle(start_dir+f'{base}_{curent_ym[:-2]}-{curent_ym[-2:]}.p')
+                news = news.dropna(subset=['headline'])
 
             born = df.loc[i,'born']
             for c in ['audiences','provider','subjects']:
-                ind = news['subjects'].apply(lambda l: any([x==born for x in l]))
+                ind = news[c].apply(lambda l: any([x==born for x in l]))
                 if ind.sum()>nb_sample:
-                    t=news.loc[ind,'headline'] + '\n \n' + news.loc[ind,'body']
+                    t=news.loc[ind,'headline'].fillna('') + '\n \n' + news.loc[ind,'body'].fillna('')
                     sample = np.random.choice(t.values, nb_sample)
                     for j in range(nb_sample):
                         df.loc[i,j] = sample[j]
                     break
             # print(df.shape)
 
-        df.to_csv(final_dir2+f'df_{refi_id}.csv')
+        df.to_pickle(final_dir2+f'df_{refi_id}.p')
+        df.to_excel(final_dir2+f'df_{refi_id}.xlsx',sheet_name='Sheet1', engine='openpyxl')
+        print('saved')

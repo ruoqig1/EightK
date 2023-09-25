@@ -3,11 +3,16 @@ from transformers import GPT2Tokenizer, TFOPTForCausalLM
 from enum import Enum
 from parameters import *
 import numpy as np
-
-class OPTModel:
+from utils_local.nlp_tokenize_and_bow import clean_from_txt_to_bow
+import json
+class EncodingModel:
     def __init__(self, par : Params):
-        self.tokenizer = GPT2Tokenizer.from_pretrained(par.enc.opt_model_type.value, cache_dir=Constant.HUGGING_DIR)
-        self.model = TFOPTForCausalLM.from_pretrained(par.enc.opt_model_type.value, cache_dir=Constant.HUGGING_DIR)
+        if par.enc.opt_model_type not in [OptModelType.BOW1]:
+            self.tokenizer = GPT2Tokenizer.from_pretrained(par.enc.opt_model_type.value, cache_dir=Constant.HUGGING_DIR)
+            self.model = TFOPTForCausalLM.from_pretrained(par.enc.opt_model_type.value, cache_dir=Constant.HUGGING_DIR)
+            self.bow = False
+        else:
+            self.bow = True
 
     def get_hidden_states(self, text: str):
         inputs = self.tokenizer.encode(text, return_tensors="tf",truncation=True, max_length = self.model.config.max_position_embeddings-1)
@@ -19,23 +24,32 @@ class OPTModel:
         return last_token_hidden_state, average_hidden_stage[0,:]
 
     def get_hidden_states_para(self, texts: list):
-        inputs = self.tokenizer(texts, return_tensors="tf", padding=True, truncation=True, max_length=self.model.config.max_position_embeddings - 1)
-        outputs = self.model(inputs.input_ids, output_hidden_states=True)
-        hidden_states = outputs.hidden_states
-        last_hidden_states = hidden_states[-1].numpy()
+        if self.bow:
+            # Create arrays to hold the processed hidden states for all texts
+            first_encoding = []
+            second_encoding = []
 
-        # Create arrays to hold the processed hidden states for all texts
-        last_token_hidden_states = []
-        average_hidden_states = []
+            for i, text in enumerate(texts):
+                bow = clean_from_txt_to_bow(text)
+                first_encoding.append(json.dumps(bow))
+        else:
+            inputs = self.tokenizer(texts, return_tensors="tf", padding=True, truncation=True, max_length=self.model.config.max_position_embeddings - 1)
+            outputs = self.model(inputs.input_ids, output_hidden_states=True)
+            hidden_states = outputs.hidden_states
+            last_hidden_states = hidden_states[-1].numpy()
 
-        for i, text in enumerate(texts):
-            last_token_hidden_state = last_hidden_states[i, -1, :]
-            average_hidden_state = np.mean(last_hidden_states[i], axis=0)
+            # Create arrays to hold the processed hidden states for all texts
+            first_encoding = []
+            second_encoding = []
 
-            last_token_hidden_states.append(last_token_hidden_state)
-            average_hidden_states.append(average_hidden_state)
+            for i, text in enumerate(texts):
+                last_token_hidden_state = last_hidden_states[i, -1, :]
+                average_hidden_state = np.mean(last_hidden_states[i], axis=0)
 
-        return last_token_hidden_states, average_hidden_states
+                first_encoding.append(last_token_hidden_state)
+                second_encoding.append(average_hidden_state)
+
+        return first_encoding, second_encoding
 
     def generate_text(self, text: str, max_length: int = 50):
         inputs = self.tokenizer.encode(text, return_tensors="tf")
@@ -47,7 +61,7 @@ class OPTModel:
 if __name__ == "__main__":
     par = Params()
     par.enc.opt_model_type = OptModelType.OPT_125m
-    model = OPTModel(par)
+    model = EncodingModel(par)
     input_text = "Hello, World!"
     last_token_hidden_stage_v1, average_token_hidden_v2 =model.get_hidden_states(input_text)
     print("Last hidden state: ", last_token_hidden_stage_v1)

@@ -19,7 +19,7 @@ import json
 import glob
 import itertools
 import re
-from utils_local.llm import OPTModel
+from utils_local.llm import EncodingModel
 from utils_local.zip import decompress_gz_file, unzip_all
 from utils_local.vec_functions import vectorise_in_batch
 

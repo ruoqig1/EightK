@@ -21,7 +21,7 @@ class TrainerLogisticElasticNet(BaseTrainer):
 
 
     def _predict(self, x):
-        return self.m.predict(x.values)
+        return self.m.predict_proba(x.values)
 
     def _train_model(self, x: pd.DataFrame, y: pd.DataFrame, hyper_params):
         self.m = LogisticRegression(C=hyper_params['shrinkage'][0], penalty='elasticnet', l1_ratio=hyper_params['l1_ratio'][0], solver='saga', fit_intercept=True)

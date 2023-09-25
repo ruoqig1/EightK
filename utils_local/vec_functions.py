@@ -19,7 +19,7 @@ import json
 import glob
 import itertools
 import re
-from utils_local.llm import OPTModel
+from utils_local.llm import EncodingModel
 from utils_local.zip import decompress_gz_file, unzip_all
 
 
@@ -47,9 +47,7 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
     # get save dir
     save_dir = par.get_vec_process_dir()
 
-    # create model
-    model = OPTModel(par)
-
+    model = EncodingModel(par)
 
     res = df[id_col].copy()
     res['vec_last'] = np.nan
@@ -80,7 +78,8 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
                 res.loc[ind, 'vec_last'] = pd.Series(last_token_hidden_stage, index=ind)
             res.dropna().to_pickle(save_dest)
             res = res.loc[pd.isna(res.values)]
-#
+
+
 
 if __name__ == "__main__":
     pass

@@ -41,6 +41,7 @@ class OptModelType(Enum):
     OPT_6b7 ='facebook/opt-6.7b'
     OPT_13b ='facebook/opt-13b'
     OPT_175b ='facebook/opt-175b'
+    BOW1 ='BOW1'
 
 
 
@@ -50,7 +51,7 @@ class OptModelType(Enum):
 
 
 class Constant:
-    if socket.gethostname() in ['HEC37827','3330L-214940-M']:
+    if (socket.gethostname() in ['HEC37827','3330L-214940-M']) | ('gadi' in socket.gethostname()):
         # main_dir = '/media/antoine/ssd_ntfs//wsj_openai/'
         MAIN_DIR = './'
         HUGGING_DIR = None
@@ -150,6 +151,9 @@ class RandomFeaturesParams:
         self.para_nb_of_list_group=20
         self.para_id=0
 
+class GridParams:
+    def __int__(self):
+        self.year_id = 0
 
 class TrainerParams:
     def __init__(self):
@@ -161,7 +165,8 @@ class TrainerParams:
         self.pred_model = PredModel.RIDGE
         self.norm = Normalisation.ZSCORE
         self.save_ins = False
-
+        self.tnews_only = None
+        self.l1_ratio = [0.5]
 
         # this is the number of individual saving chunks.
         # by this we mean the number of individual df contianing some oos performance that will be saved before merged.
@@ -180,6 +185,7 @@ class Params:
         self.enc = EncodingParams()
         self.train = TrainerParams()
         self.rf = RandomFeaturesParams()
+        self.grid = GridParams()
         self.model_ran_dir = Constant.MAIN_DIR+'res/model_ran/'
 
     def get_vec_process_dir(self):
@@ -194,7 +200,7 @@ class Params:
         now = datetime.datetime.now()
         # Format it into a string suitable for a filename
 
-        k = max([int(x.split('_')[1]) for x in os.listdir(self.model_ran_dir)])+1
+        k = max([int(x.split('_')[1]) for x in os.listdir(self.model_ran_dir)]+[0])+1
         formatted_date = now.strftime("%Y-%m-%d")+f'_{k}'
         self.save(save_dir=self.model_ran_dir,file_name=formatted_date)
         print('Saved models params in',self.model_ran_dir+formatted_date,flush=True)
@@ -217,8 +223,17 @@ class Params:
         d = self.train.__dict__
         s=''
         for k in d.keys():
-            v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
-            s+= f'{k}{v}'
+            if d[k] is not None:
+                # we only add to the string name if a parameters is not none. That allows us to keep compatible stuff with old models by adding new parameters with None
+                # v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
+                if type(d[k]) in [type(np.array([])),type([])]:
+                    v = len(d[k])
+                    if v ==1:
+                        v = d[k][0]
+                else:
+                    v = d[k]
+
+                s+= f'{k}{v}'
 
         temp_str = '/temp'if temp else ''
         save_dir = Constant.MAIN_DIR + f'res{temp_str}/vec_pred/{s}/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
