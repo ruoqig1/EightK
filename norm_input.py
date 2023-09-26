@@ -33,8 +33,8 @@ if __name__ == "__main__":
     par = Params()
     par.enc.opt_model_type = OptModelType.OPT_13b
     par.enc.news_source = NewsSource.EIGHT_LEGAL
+    par.train.tnews_only = True
     load_dir = par.get_training_dir() # the ouptut of merging the vectors
-
 
 
     print('Start loading Df', flush=True)
@@ -42,18 +42,18 @@ if __name__ == "__main__":
     print('Loaded Df', flush=True)
     df = set_ids_to_eight_k_df(df, par)
 
-    for norm in [Normalisation.ZSCORE]:
+    # for norm in [Normalisation.ZSCORE,Normalisation.MINMAX, Normalisation.RANK]:
+    for norm in [Normalisation.RANK]:
+        par.train.norm = norm
         save_dir = par.get_training_norm_dir()  # where we will save the whole file, it's zscore dependant
-        print('set ids', flush=True)
         x = np.load(load_dir + 'x.npy')
         x = pd.DataFrame(x)
-        print('Start normalizing')
-        # x = normalize(x, par)
-        print('Normalized', flush=True)
-        for year in np.sort(np.unique(df['date'].dt.year)):
+        x = normalize(x, par)
+        for year in tqdm.tqdm(np.sort(np.unique(df['date'].dt.year)),norm.name):
             ind = df['date'].dt.year==year
             df.loc[ind,:].to_pickle(save_dir+f'df_{year}.p')
             x.loc[ind,:].to_pickle(save_dir+f'x_{year}.p')
+
 
 
 

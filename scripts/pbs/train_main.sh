@@ -3,8 +3,11 @@
 # Make the script executable
 chmod +x $0
 
+# Define the upper limit as a variable
+lower_limit=0
+upper_limit=0
 # Loop from 0 to 134
-for i in $(seq 0 90); do
+for i in $(seq $lower_limit $upper_limit); do
 
   # Define a temporary PBS script name
   TEMP_PBS="temp_script.pbs"
@@ -13,10 +16,10 @@ for i in $(seq 0 90); do
   email_flag="n"
 
   # Generate the PBS script
-  if [ $i -eq 0 ]; then
+  if [ $i -eq $lower_limit ]; then
     # First iteration, send an email when it starts
     email_flag="b"
-  elif [ $i -eq 14 ]; then
+  elif [ $i -eq $upper_limit ]; then
     # Last iteration, send an email when it ends
     email_flag="e"
   fi
@@ -26,9 +29,9 @@ for i in $(seq 0 90); do
 #!/bin/bash
 #PBS -P nz97
 #PBS -q normal
-#PBS -l walltime=24:00:00
+#PBS -l walltime=5:00:00
 #PBS -l storage=scratch/nz97
-#PBS -l mem=95GB
+#PBS -l mem=24GB
 #PBS -l ncpus=4
 #PBS -M antoine.didisheim@unimelb.edu.au
 #PBS -m ${email_flag}
@@ -39,7 +42,7 @@ for i in $(seq 0 90); do
 cd /scratch/nz97/ad4734/EightK/
 module load python3/3.10.4
 source ~/scratch/nz97/ad4734/venv/bin/activate
-python train_main.py ${i}
+python train_new.py ${i}
 EOL
 
   # Submit the script

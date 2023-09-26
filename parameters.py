@@ -165,15 +165,15 @@ class TrainerParams:
         self.pred_model = PredModel.RIDGE
         self.norm = Normalisation.ZSCORE
         self.save_ins = False
-        self.tnews_only = None
+        self.tnews_only = False
         self.l1_ratio = [0.5]
 
         # this is the number of individual saving chunks.
         # by this we mean the number of individual df contianing some oos performance that will be saved before merged.
         # too big and we risk loosing some processing, too small and we will make a mess of the merging process.
-        self.nb_chunks = 20
+        self.nb_chunks = None
         #
-        self.min_nb_chunks_in_cluster = 10
+        self.min_nb_chunks_in_cluster = None
 
 # store all basic_parameters into a single object
 class Params:
@@ -244,6 +244,13 @@ class Params:
     def get_training_dir(self):
         # create the directory
         save_dir = Constant.MAIN_DIR + f'data/training/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+        os.makedirs(save_dir, exist_ok=True)
+        return save_dir
+
+
+    def get_training_norm_dir(self):
+        # create the directory
+        save_dir = Constant.MAIN_DIR + f'data/training_norm/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/{self.train.norm.name}/'
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
 

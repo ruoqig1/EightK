@@ -10,13 +10,10 @@ from didipack.trainer.trainer_ridge import TrainerRidge
 from didipack.trainer.trainer_logistic_elastic_net import TrainerLogisticElasticNet
 from didipack.trainer.train_splitter import get_start_dates,get_chunks,get_tasks_for_current_node
 import psutil
+from utils_local.general import *
 from utils_local.trainer_specials import *
 from experiments_params import get_main_experiments
-def set_ids_to_eight_k_df(df:pd.DataFrame,par:Params):
-    df = df.reset_index(drop=True).reset_index().rename(columns={'index': 'id'})
-    if par.train.tnews_only is not None:
-        df['id']=df['id'].astype(str)+'-'+df['news0'].astype(str)
-    return df
+
 
 
 def generate_fake_data(N: int = 1000, P: int = 100) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
@@ -36,31 +33,6 @@ def generate_fake_data(N: int = 1000, P: int = 100) -> Tuple[pd.DataFrame, pd.Da
     ids = dates.copy()
 
     return fake_data, y, dates, ids
-
-def chose_trainer(par:Params):
-    m = None
-    if par.train.pred_model == PredModel.RIDGE:
-        m = TrainerRidge(par)
-    if par.train.pred_model == PredModel.LOGIT_EN:
-        if par.train.tnews_only is None:
-            m = TrainerLogisticElasticNet(par)
-        else:
-            m = TrainerLogisitcWithNewsInSample(par,para=-1)
-    return m
-
-def current_memory_usage():
-    process = psutil.Process(os.getpid())
-    mem_info = process.memory_info()
-    return mem_info.rss / 1e9  # memory in GB
-
-def normalize(x, par:Params):
-    if par.train.norm == Normalisation.ZSCORE:
-        x = (x - x.mean()) / x.std()
-    if par.train.norm == Normalisation.RANK:
-        x = x.rank(pct=True,axis=1)-0.5
-    if par.train.norm == Normalisation.MINMAX:
-        x = 2 * ((x - x.min()) / (x.max() - x.min())) - 1
-    return x
 
 if __name__ == "__main__":
     args = didi.parse()
@@ -133,10 +105,9 @@ if __name__ == "__main__":
         df_oos_pred = pd.DataFrame()
         for start_id in tqdm.tqdm(chunk[1],f'Chunks {k} ({chunk[0]}) out of {len(to_run_now)}'):
             y_test, _ = trainer.train_at_time_t(x=x, y=y, ids=ids, times=dates, t_index_for_split=start_id)
-            y_test, _ = trainer.train_at_time_t(x=x, y=y, ids=ids, times=dates, t_index_for_split=start_id)
             df_oos_pred = pd.concat([df_oos_pred, y_test], axis=0)
         df_oos_pred.to_pickle(temp_save_dir + chunk[0])
-        print(df_oos_pred.head(),0,flush=True)
+        print(df_oos_pred.head(),flush=True)
         print('save', temp_save_dir + chunk[0])
 
     if par.grid.year_id == 0:

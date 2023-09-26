@@ -1,0 +1,77 @@
+import numpy as np
+import pandas as pd
+import os
+from parameters import *
+from data import *
+from utils_local.nlp_ticker import *
+from didipack.utils_didi.ridge import run_efficient_ridge
+from didipack.trainer.trainer_ridge import TrainerRidge
+# from didipack.trainer.trainer_logistic_elastic_net import TrainerLogisticElasticNet
+from didipack.trainer.trainer_logistic_elastic_net import TrainerLogisticElasticNet
+from didipack.trainer.train_splitter import get_start_dates,get_chunks,get_tasks_for_current_node
+import psutil
+from utils_local.general import *
+from utils_local.trainer_specials import *
+from experiments_params import get_main_experiments
+
+def load_data_for_this_chunks(par: Params):
+    # load the correct data
+    start = par.grid.year_id - par.train.T_train
+    end = par.grid.year_id + par.train.testing_window
+    load_dir = par.get_training_norm_dir()
+    years_in_the_list = np.sort(np.unique([int(x.split('_')[1].split('.')[0]) for x in os.listdir(load_dir)]))
+    df = pd.DataFrame()
+    x = pd.DataFrame()
+    for year in years_in_the_list:
+        if (year >= start) & (year < end):
+            df = pd.concat([df, pd.read_pickle(load_dir + f'df_{year}.p')], axis=0)
+            x = pd.concat([x, pd.read_pickle(load_dir + f'x_{year}.p')], 0)
+
+    y = df[['ret_m']]
+    y = np.sign(y)
+    y = y.replace({0: 1})
+    ids = df['id']
+    print('Data loaded', flush=True)
+    dates = df['date'].dt.year
+    return x,y,dates,ids
+
+def generate_fake_data(N: int = 1000, P: int = 100) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """
+    Generates a dataset of fake data for testing purposes.
+
+    Args:
+        N (int): The number of rows in the generated data.
+        P (int): The number of columns in the generated data.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]: A tuple containing the fake data, its mean along the columns, a series representing dates, and a series representing ids.
+    """
+    fake_data = pd.DataFrame(np.random.normal(size=(N, P)))
+    y = pd.DataFrame(np.sign(fake_data.mean(1)))
+    dates = pd.Series(np.arange(N))
+    ids = dates.copy()
+
+    return fake_data, y, dates, ids
+
+if __name__ == "__main__":
+    args = didi.parse()
+    print('START WORKING ON ',args.a,flush=True)
+    par = get_main_experiments(args.a, train=True)
+
+    print('Parameter defined',flush=True)
+    par.print_values()
+    trainer = chose_trainer(par)
+    temp_save_dir = par.get_res_dir()
+    print(temp_save_dir,flush=True)
+
+    already_processed = os.listdir(temp_save_dir)
+    save_name = f'{par.grid.year_id}.p'
+
+    if save_name in already_processed:
+        print(f'Already processed {save_name}', flush=True)
+    else:
+        x, y, dates, ids = load_data_for_this_chunks(par)
+        y_test, _ = trainer.train_at_time_t(x=x, y=y, ids=ids, times=dates, t_index_for_split=par.grid.year_id)
+        y_test.to_pickle(temp_save_dir + save_name)
+        print(y_test, flush=True)
+        print('saved to',temp_save_dir+save_name,flush=True)

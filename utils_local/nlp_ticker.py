@@ -42,7 +42,7 @@ def clean_ticker(input_string,list_valid:list):
     input_string = remove_weird_symbols(input_string)
     if list_valid is not None:
         if input_string not in list_valid:
-            return invalid_output, invalid_output
+            return invalid_output
     return input_string
 
 
