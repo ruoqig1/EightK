@@ -71,6 +71,13 @@ if __name__ == "__main__":
     print('Parameter defined',flush=True)
     par.print_values()
 
+    # for i in range(90):
+    for i in [0]:
+        par = get_main_experiments(i, train=True)
+        temp_save_dir = par.get_res_dir()
+        print(temp_save_dir)
+    # 0 NOW
+    # save /data/gpfs/projects/punim2039/EightK/res/temp/vec_pred/T_train-60T_val6testing_window12shrinkage_list5pred_modelPredModel.LOGIT_ENnormNormalisation.ZSCOREsave_insFalsetnews_onlyTruel1_ratio0.5nb_chunks14min_nb_chunks_in_cluster1/OPT_13b/EIGHT_LEGAL/chunk_0.p
 
     if socket.gethostname()=='3330L-214940-M':
         temp_dir = 'res/temp_data/'
@@ -78,10 +85,7 @@ if __name__ == "__main__":
         x, y, dates, ids = generate_fake_data()
         start_id = 100
         par.train.tnews_only = None
-        # y = pd.read_pickle(temp_dir+'y.p')
-        # x = pd.read_pickle(temp_dir+'x.p')
-        # dates = pd.read_pickle(temp_dir+'dates.p')
-        # ids = pd.read_pickle(temp_dir+'ids.p')
+
     else:
         load_dir = par.get_training_dir()
         print('Start loading Df',flush=True)
@@ -111,6 +115,7 @@ if __name__ == "__main__":
     trainer = chose_trainer(par)
     verbose = True
     temp_save_dir = par.get_res_dir()
+    print(temp_save_dir)
 
     start_dates = get_start_dates(dates, par.train.T_train, par.train.testing_window)
     chunks_still_to_process, chunks_already_processed = get_chunks(start_dates,  par.train.nb_chunks, temp_save_dir)
@@ -127,6 +132,7 @@ if __name__ == "__main__":
         k+=1
         df_oos_pred = pd.DataFrame()
         for start_id in tqdm.tqdm(chunk[1],f'Chunks {k} ({chunk[0]}) out of {len(to_run_now)}'):
+            y_test, _ = trainer.train_at_time_t(x=x, y=y, ids=ids, times=dates, t_index_for_split=start_id)
             y_test, _ = trainer.train_at_time_t(x=x, y=y, ids=ids, times=dates, t_index_for_split=start_id)
             df_oos_pred = pd.concat([df_oos_pred, y_test], axis=0)
         df_oos_pred.to_pickle(temp_save_dir + chunk[0])

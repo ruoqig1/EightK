@@ -31,7 +31,10 @@ def load_res(par:Params):
     for f in np.sort(os.listdir(temp_save_dir)):
         t = pd.read_pickle(temp_save_dir + f)
         res = pd.concat([res, t], axis=0)
-    df = res.reset_index()[['t_ind', 'id', 'pred']].merge(df)
+    res['pred_prb'] = res['pred']
+    res['pred'] = np.sign(res['pred']-0.5)
+
+    df = res.reset_index()[['t_ind', 'id', 'pred','pred_prb']].merge(df)
     df['mse'] = (df['pred'] - df['ret_m']) ** 2
     df['acc'] = np.sign(df['pred']) == np.sign(df['ret_m'])
     return df
@@ -39,14 +42,16 @@ def load_res(par:Params):
 if __name__ == "__main__":
     args = didi.parse()
 
-    for i in range(1):
+    for i in range(6):
         par = get_main_experiments(i,train=False)
-        df = load_res(par)
-        print(par.train.norm,par.train.l1_ratio,df.shape,par.train.tnews_only)
-        print('Model:')
-        print('ACCURACY OVERALL',df['acc'].mean())
-        print('Sanity check',df['pred'].mean())
-
+        try:
+            df = load_res(par)
+            print(par.train.T_train,par.train.l1_ratio,df.shape,par.train.tnews_only)
+            print('Model:')
+            print('ACCURACY OVERALL',df['acc'].mean())
+            print('Sanity check',df['pred'].mean())
+        except:
+            print(i,'bugged')
 
     grp = df['items']
     grp = df['date'].dt.year
@@ -78,3 +83,6 @@ if __name__ == "__main__":
             results[name] = {'t_statistic': t_stat, 'p_value': p_val, 'mean_pred_pos':data_pred1.mean(), 'mean_pred_neg':data_pred_neg1.mean()}
         print('\n \n COL',col)
         print(pd.DataFrame(results).round(5))
+
+
+
