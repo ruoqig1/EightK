@@ -11,6 +11,8 @@ import tqdm
 import os
 import glob
 import gzip
+
+import data
 from parameters import Params, Constant
 import html2text
 import sys
@@ -19,6 +21,11 @@ from didipack import PandasPlus
 import wrds
 import didipack as didi
 
+
+def load_some_enc(par:Params):
+    load_dir_and_file = par.get_vec_process_dir(merged_bow=True)
+    df = pd.read_pickle(load_dir_and_file)
+    return df
 
 
 def filter_items(x):
@@ -49,8 +56,12 @@ class Data:
         self.p_vec_refinitiv = par.data.base_data_dir + '/vector/refinitiv/'
         self.p_vec_third_party = par.data.base_data_dir + '/vector/third_party/'
         self.p_to_vec_main_dir = par.data.base_data_dir + '/to_vec/'
+        self.p_some_news_dir = par.data.base_data_dir +'/cleaned/some_news/'
+        self.p_bow_merged_dir = Constant.MAIN_DIR + f'data/bow_merged/'
 
 
+        os.makedirs(self.p_bow_merged_dir,exist_ok=True)
+        os.makedirs(self.p_some_news_dir,exist_ok=True)
         os.makedirs(self.p_to_vec_main_dir,exist_ok=True)
         os.makedirs(self.p_news_tickers_related,exist_ok=True)
         os.makedirs(self.p_vec_refinitiv,exist_ok=True)
@@ -164,16 +175,16 @@ class Data:
         df = df.loc[~df['items'].isin([3.1, 1.03]), :]
         return df
 
-    def load_e_ff_long(self, reload=False,window=20):
+    def load_e_ff_long(self, reload=False,tp= 'ff' ,window=20):
         if reload:
-            df =pd.read_csv(self.raw_dir+f'e{window}ff_long.csv')
+            df =pd.read_csv(self.raw_dir+f'e{window}{tp}_long.csv')
             df.columns = [x.lower() for x in df.columns]
             df['date'] = pd.to_datetime(df['date'])
             df['evtdate'] = pd.to_datetime(df['evtdate'])
             df = df.drop(columns=['model'])
-            df.to_pickle(self.p_dir+f'e{window}ff_long.p')
+            df.to_pickle(self.p_dir+f'e{window}{tp}_long.p')
         else:
-            df = pd.read_pickle(self.p_dir+f'e{window}ff_long.p')
+            df = pd.read_pickle(self.p_dir+f'e{window}{tp}_long.p')
         return df
 
 
@@ -596,7 +607,7 @@ class Data:
 
         return df_items
 
-    def load_return_for_nlp_on_eightk(self,reload=False):
+    def load_return_for_nlp_on_eightk_OLD(self,reload=False):
         if reload:
             crsp = self.load_crsp_daily()
             crsp['ret'] = pd.to_numeric(crsp['ret'], errors='coerce')
@@ -636,6 +647,90 @@ class Data:
             df = pd.read_pickle(self.p_dir+'load_return_for_nlp_on_eightk.p')
         return df
 
+    def load_abn_return(self,model = 1):
+        if model ==1:
+            # use market model
+            df = pd.read_pickle(self.p_dir+'abn_ev_m.p')
+        return df
+
+    def load_return_for_nlp_on_eightk(self,reload=False):
+        if reload:
+            ret = self.load_abn_return()
+            ret =ret.loc[ret['evttime'].between(-1,1),:]
+            ret = ret.groupby(['permno','date'])['ret','abret'].mean()
+            ret = ret.reset_index()
+
+            ev = self.load_list_by_date_time_permno_type()
+            ev = ev.rename(columns={'adate': 'date', 'atime': 'eight_time'})
+            ev['date'] = pd.to_datetime(ev['date'])
+
+            df = ev[['items', 'cik', 'form_id', 'date', 'permno', 'eight_time']].merge(ret)
+
+            rav = self.load_ravenpack_all()
+            # drop news and eightk before 16
+            ind = rav['rtime'].apply(lambda x: int(x[:2]) <= 16)
+            rav = rav.loc[ind, :]
+            rav['news0'] = (rav['relevance'] >= 1) * 1
+
+            rav = rav.groupby(['rdate', 'permno'])[['news0']].max().reset_index()
+            rav = rav.rename(columns={'rdate': 'date'})
+            rav['permno'] = rav['permno'].astype(int)
+
+            df = df.merge(rav, how='left')
+            df['news0'] = df['news0'].fillna(0.0)
+            df.to_pickle(self.p_dir+'load_return_for_nlp_on_eightk_new.p')
+        else:
+            df = pd.read_pickle(self.p_dir+'load_return_for_nlp_on_eightk_new.p')
+        return df
+
+    def load_crsp_all(self,reload = False):
+        if reload:
+            df = pd.read_csv(self.raw_dir+'crsp_full.csv')
+            df.columns = [x.lower() for x in df.columns]
+            df['date'] = pd.to_datetime(df['date'])
+            df['mcap']=df['shrout']*df['prc']
+            df['ret'] = pd.to_numeric(df['ret'],errors='coerce')
+            df = df[['permno','date','ret','vol','mcap']]
+            df.to_pickle(self.p_dir+'load_crsp_all.p')
+        else:
+            df = pd.read_pickle(self.p_dir+'load_crsp_all.p')
+        return df
+
+    def load_crsp_low_shares(self,reload = False):
+        if reload:
+            df = pd.read_csv(self.raw_dir+'crsp_low_shares.csv')
+            df.columns = [x.lower() for x in df.columns]
+            df['date'] = pd.to_datetime(df['date'])
+            df['mcap']=df['shrout']*df['prc']
+            df['ret'] = pd.to_numeric(df['ret'],errors='coerce')
+            df = df[['permno','date','ret','vol','mcap']]
+            df.to_pickle(self.p_dir+'load_crsp_low_shares.p')
+        else:
+            df = pd.read_pickle(self.p_dir+'load_crsp_low_shares.p')
+        return df
+
+    def load_prn(self,reload=False):
+        if reload:
+            start_dir = data.p_news_tickers_related
+            save_dir = data.p_to_vec_main_dir + '/single_stock_news_to_vec/'
+            os.makedirs(save_dir, exist_ok=True)
+            crsp = data.load_crsp_daily()
+            print('loaded CRSP')
+            list_valid = data.load_list_of_tickers_in_news_and_crsp()
+            list_valid = list(list_valid.drop_duplicates().values)
+            f = 'sample.p'
+            # for f in ['third']:
+            for f in ['third']:
+                print('Start working on ', f)
+                df = pd.read_pickle(start_dir + f + '.p')
+
+                ind = df['audiences'].apply(lambda l: any([':PRN'.lower() in str(x).lower() for x in l]))
+                ind_p = df['provider'].apply(lambda x: ':PRN'.lower() in x.lower())
+                df['prn'] = ind | ind_p
+                df[['id', 'prn']].to_pickle(self.p_dir + 'prn.p')
+        else:
+            df = pd.read_pickle(self.p_dir + 'prn.p')
+        return df
 
 
 if __name__ == "__main__":

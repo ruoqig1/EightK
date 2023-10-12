@@ -39,11 +39,9 @@ class TrainerLogisitcWithNewsInSample(TrainerLogisticElasticNet):
 
         end_train = t_index - self.par.train.T_val
         end_test = t_index + self.par.train.testing_window
-
         x_train, y_train = self._split_and_index(x, y, ids, times, start_train, end_train,no_news=True)
         x_val, y_val = self._split_and_index(x, y, ids, times, end_train, t_index,no_news=True)
         x_test, y_test = self._split_and_index(x, y, ids, times, t_index, end_test, no_news=False)
-
         return x_train, y_train, x_val, y_val, x_test, y_test
 
 

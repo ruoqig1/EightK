@@ -1,16 +1,6 @@
+from parameters import *
 import numpy as np
 import pandas as pd
-import os
-from parameters import *
-from data import *
-from utils_local.nlp_ticker import *
-from didipack.utils_didi.ridge import run_efficient_ridge
-from didipack.trainer.trainer_ridge import TrainerRidge
-# from didipack.trainer.trainer_logistic_elastic_net import TrainerLogisticElasticNet
-from utils_local.trainer_logistic_elastic_net import TrainerLogisticElasticNet
-from didipack.trainer.train_splitter import get_start_dates,get_chunks,get_tasks_for_current_node
-import psutil
-from utils_local.trainer_specials import *
 
 
 def get_main_experiments(id_comb:int,train=True) -> Params:
@@ -27,7 +17,8 @@ def get_main_experiments(id_comb:int,train=True) -> Params:
     par.train.pred_model = PredModel.LOGIT_EN
     par.train.tnews_only = True
 
-    par.train.shrinkage_list = [0.001, 0.01, 0.1, 1, 10]
+    # par.train.shrinkage_list = [0.001, 0.01, 0.1, 1, 10]
+    par.train.shrinkage_list = [0.001, 0.01, 0.1, 1]
     # par.train.shrinkage_list = [1.0]
 
     # year_id_list = np.arange(0,15,1) if train else [0]
@@ -35,8 +26,9 @@ def get_main_experiments(id_comb:int,train=True) -> Params:
 
     grid = [
         ['train', 'T_train',[8]],
-        ['train', 'norm', [Normalisation.ZSCORE,Normalisation.MINMAX]], # ,Normalisation.MINMAX
+        ['train', 'norm', [Normalisation.ZSCORE]], # ,Normalisation.MINMAX
         ['train', 'l1_ratio', [[0.0], [0.5],[1.0]]],
+        ['train', 'abny', [True,False]],
         ['grid', 'year_id', year_id_list]
     ]
     # par.train.T_train = -60

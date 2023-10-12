@@ -22,17 +22,36 @@ def load_data_for_this_chunks(par: Params):
     years_in_the_list = np.sort(np.unique([int(x.split('_')[1].split('.')[0]) for x in os.listdir(load_dir)]))
     df = pd.DataFrame()
     x = pd.DataFrame()
+    # os.listdir('/data/gpfs/projects/punim2039/EightK/data/training_norm/OPT_13b/EIGHT_LEGAL/ZSCORE/')
     for year in years_in_the_list:
-        if (year >= start) & (year < end):
+        if (year >= start) & (year <= end):
             df = pd.concat([df, pd.read_pickle(load_dir + f'df_{year}.p')], axis=0)
-            x = pd.concat([x, pd.read_pickle(load_dir + f'x_{year}.p')], 0)
+            x = pd.concat([x, pd.read_pickle(load_dir + f'x_{year}.p')], axis = 0)
 
-    y = df[['ret_m']]
+    df = df.reset_index(drop=True)
+    x = x.reset_index(drop=True)
+
+    if par.train.abny:
+        print('USING ABNORMAL RET')
+        y = df[['abret']]
+    else:
+        y = df[['ret']]
+
+
     y = np.sign(y)
     y = y.replace({0: 1})
     ids = df['id']
-    print('Data loaded', flush=True)
     dates = df['date'].dt.year
+
+    ind = ~pd.isna(y.iloc[:,0])
+    x = x.loc[ind,:]
+    y = y.loc[ind,:]
+    dates = dates.loc[ind]
+    ids = ids.loc[ind]
+
+    print('Data loaded with shape', flush=True)
+    print(x.shape,y.shape,flush=True)
+
     return x,y,dates,ids
 
 def generate_fake_data(N: int = 1000, P: int = 100) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
@@ -57,7 +76,6 @@ if __name__ == "__main__":
     args = didi.parse()
     print('START WORKING ON ',args.a,flush=True)
     par = get_main_experiments(args.a, train=True)
-
     print('Parameter defined',flush=True)
     par.print_values()
     trainer = chose_trainer(par)

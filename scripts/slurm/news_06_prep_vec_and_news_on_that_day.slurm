@@ -26,4 +26,4 @@ module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 news_06_create_to_vec_single_stock_news.py
+python3 news_06_prep_vec_and_news_on_that_day.py

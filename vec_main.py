@@ -63,6 +63,32 @@ def load_and_process_eight_k_legal_or_pressed(par, args, press_or_legal ='legal'
 
 
 
+def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
+    if par.enc.opt_model_type == OptModelType.BOW1:
+        save_size = 10000
+    else:
+        save_size = 5000
+    # load and pre process data (code specific)
+    data = Data(par)
+    load_dir = data.p_to_vec_main_dir + '/single_stock_news_to_vec/'
+    # Keep this to check the lsit to run in debugging
+    # list_todo = np.sort([x for x in os.listdir(load_dir) if ref_or_thrid_party in x])
+    year = np.arange(1996,2023)[args.a] # len 27
+    to_load = f'{ref_or_thrid_party}{year}.p'
+    df=pd.read_pickle(load_dir+to_load)
+    df = df.reset_index(drop=True).reset_index()
+    df['txt'] = df['headline']
+    ind = df['alert']==False
+    df.loc[ind,'txt'] = df.loc[ind,'txt'] + ' \n ' + df.loc[ind,'body']
+    id_col = ['id','index','timestamp','alert','ticker']
+    df = df[id_col+['txt']]
+    print('Loaded year', year)
+    print('With ', ref_or_thrid_party)
+    print('Size', df.shape)
+    print('Duplicated id', df[id_col].duplicated().sum())
+    return id_col,save_size,batch_size,year,df
+
+
 
 if __name__ == "__main__":
     args = didi.parse() # --legal=0/1 --eight=0/1 |  19 variations for legal eight
@@ -80,7 +106,8 @@ if __name__ == "__main__":
         # launch the vectorisation
         vectorise_in_batch(id_col=id_col, df=df, save_size=save_size, batch_size=batch_size, par=par, year=year)
     else:
-        par.enc.opt_model_type = OptModelType.OPT_13b
+        # par.enc.opt_model_type = OptModelType.OPT_13b
+        par.enc.opt_model_type = OptModelType.OPT_30b
         batch_size = 2
 
     if args.bow==1:
@@ -102,6 +129,19 @@ if __name__ == "__main__":
             id_col, save_size, batch_size, year, df = load_and_process_eight_k_legal_or_pressed(par, args,press_or_legal='press')
             # launch the vectorisation
             vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
+
+
+    if args.news==1:
+        if args.ref==1:
+            print('START NEWS, REF',flush=True)
+            par.enc.news_source = NewsSource.NEWS_REF
+            id_col, save_size, batch_size, year, df = load_and_process_news_one_stock_ref_or_third(par, args,'ref')
+        else:
+            print('START NEWS, THIRD',flush=True)
+            par.enc.news_source = NewsSource.NEWS_THIRD
+            id_col, save_size, batch_size, year, df = load_and_process_news_one_stock_ref_or_third(par, args,'third')
+        # launch the vectorisation
+        vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
 
 
     # data = Data(par)

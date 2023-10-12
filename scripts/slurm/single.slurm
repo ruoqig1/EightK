@@ -16,9 +16,9 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=120G
-#SBATCH --cpus-per-task=4
-#SBATCH --time=0-10:00:00
+#SBATCH --mem=32G
+#SBATCH --cpus-per-task=16
+#SBATCH --time=0-3:00:00
 
 module load foss/2022a
 module load GCCcore/11.3.0; module load Python/3.10.4
@@ -26,4 +26,4 @@ module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 news_create_list_of_topics_02.py
+python3 create_ebnormal_return.py

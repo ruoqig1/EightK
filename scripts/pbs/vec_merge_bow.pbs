@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -P nz97
+#PBS -q normal
+#PBS -l walltime=24:00:00
+#PBS -l storage=scratch/nz97
+#PBS -l mem=90GB
+#PBS -l ncpus=8
+#PBS -M antoine.didisheim@unimelb.edu.au
+#PBS -m be
+#PBS -N vec_merge_bow
+#PBS -o out/vec_merge_bow.out
+#PBS -e out/vec_merge_bow.err
+
+cd /scratch/nz97/ad4734/EightK/
+module load python3/3.10.4
+source ~/scratch/nz97/ad4734/venv/bin/activate
+python vec_merge.py --bow=1

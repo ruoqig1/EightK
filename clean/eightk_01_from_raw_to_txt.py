@@ -11,7 +11,7 @@ from scipy.stats import ttest_ind
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import pyperclip
-from cleaning import load_csv
+
 from bs4 import BeautifulSoup
 import re
 
@@ -209,6 +209,7 @@ if __name__ == "__main__":
     # launch 20 different ones.
     year_todo =np.arange(2004,2024,1)[grid_id]
 
+
     par = Params()
     data = Data(par)
 
@@ -256,19 +257,22 @@ if __name__ == "__main__":
         # print(l, link)
         # check that indeed the file does exist and we do have a match
         if os.path.exists(f):
-            form = open(f, "r").read()
-            # the 8k is organised in documents, so we split across file name to have individual documents use to do it with FILENAME
-            for k, file_text in enumerate(form.split('<DOCUMENT>')):
-                # k==1 means we are in the document supposed to contain all the 8k info (items and brief legal descriptio nof each items
-                press_count = 0
-                already_one_press_df =False
-                if k ==1:
-                    legal_int = process_main_eight_k_legal_file(file_text=file_text,cik=cik,link=link,form_id=form_id)
-                    legal_df = pd.concat([legal_df,legal_int],axis=0)
-                elif k in [2,3]:
-                    is_press, press_txt_vec = extract_text_if_press_relase(file_text, k, cik, form_id, link)
-                    if is_press:
-                        press_df = pd.concat([press_df,press_txt_vec],axis=1)
+            try:
+                form = open(f, "r").read()
+                # the 8k is organised in documents, so we split across file name to have individual documents use to do it with FILENAME
+                for k, file_text in enumerate(form.split('<DOCUMENT>')):
+                    # k==1 means we are in the document supposed to contain all the 8k info (items and brief legal descriptio nof each items
+                    press_count = 0
+                    already_one_press_df =False
+                    if k ==1:
+                        legal_int = process_main_eight_k_legal_file(file_text=file_text,cik=cik,link=link,form_id=form_id)
+                        legal_df = pd.concat([legal_df,legal_int],axis=0)
+                    elif k in [2,3]:
+                        is_press, press_txt_vec = extract_text_if_press_relase(file_text, k, cik, form_id, link)
+                        if is_press:
+                            press_df = pd.concat([press_df,press_txt_vec],axis=1)
+            except:
+                print('FAILED F',f,flush=True)
 
     press_df = press_df.T.reset_index(drop=True)
     legal_df = legal_df.reset_index(drop=True)
@@ -278,6 +282,6 @@ if __name__ == "__main__":
 
     print(f'Finish saving press_df of shape {press_df.shape}, and legal_df {legal_df.shape}')
 
- # username@vm-172-26-151-77.desktop.cloud.unimelb.edu.au
- # ssh-copy-id ADIDISHEIM@vm-172-26-151-77.desktop.cloud.unimelb.edu.au
-# https://vm-172-26-151-77.desktop.cloud.unimelb.edu.au:3300/client/connect;id=73402b077a2a70806d094026329d227a
+ # username@vm-172-26-151-140.desktop.cloud.unimelb.edu.au
+ # ssh-copy-id ADIDISHEIM@vm-172-26-151-140.desktop.cloud.unimelb.edu.au
+# https://vm-172-26-151-140.desktop.cloud.unimelb.edu.au:3300/client/connect;id=73402b077a2a70806d094026329d227a

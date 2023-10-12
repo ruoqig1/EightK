@@ -3,7 +3,7 @@
 #SBATCH --output=/home/adidishe/EightK/out/vec_press_%a.out
 #SBATCH --error=/home/adidishe/EightK/out/vec_press_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
-#SBATCH --array=0-18
+#SBATCH --array=9-9
 
 # Partition for the job:
 #SBATCH --partition=gpu-a100

@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -P nz97
+#PBS -q hugemem
+#PBS -l walltime=24:00:00
+#PBS -l storage=scratch/nz97
+#PBS -l mem=380GB
+#PBS -l ncpus=8
+#PBS -M antoine.didisheim@unimelb.edu.au
+#PBS -m be
+#PBS -N create_tfidf
+#PBS -o out/create_tfidf.out
+#PBS -e out/create_tfidf.err
+
+cd /scratch/nz97/ad4734/EightK/
+module load python3/3.10.4
+source ~/scratch/nz97/ad4734/venv/bin/activate
+python 01_create_tf_idf_pipeline.py

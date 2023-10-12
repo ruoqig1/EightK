@@ -79,7 +79,7 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
             res.dropna().to_pickle(save_dest)
             res = res.loc[pd.isna(res.values)]
 
-
+# python vec_main.py 26 --legal=0 --eight=0 --news=1 --ref=1 --bow=1
 
 if __name__ == "__main__":
     pass

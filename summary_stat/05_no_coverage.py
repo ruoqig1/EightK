@@ -16,21 +16,10 @@ if __name__ == "__main__":
     data = Data(par)
     window = 40
 
-    save_dir = Constant.DROP_RES_DIR + f'/ss/05_no_coverage/'
+    save_dir = Constant.EMB_PAPER + f'res/ss/05_no_coverage/'
     os.makedirs(save_dir,exist_ok=True)
 
     df = data.load_main_no_rel_data()
-
-
-    # Check number of news in our sample
-    rav = data.load_ravenpack_all()
-    rav=rav.groupby(rav['rdate'].dt.year)['permno'].count()
-    rav.plot()
-    plt.ylabel('Nb News In ravenpack Per year')
-    plot_with_every_ticks_tight_and_grid(rav.index)
-    plt.savefig(save_dir+'nb_news_ravenpack')
-    plt.show()
-
 
 
     d=df.groupby(['year','mcap_d'])['abret'].count().reset_index().pivot(columns='mcap_d',index='year',values='abret')

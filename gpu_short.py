@@ -25,7 +25,7 @@ if __name__ == "__main__":
         par.enc.opt_model_type = OptModelType.OPT_125m
         k = 2
     else:
-        par.enc.opt_model_type = OptModelType.OPT_13b
+        par.enc.opt_model_type = OptModelType.OPT_66b
         k = 2
     model = EncodingModel(par)
 

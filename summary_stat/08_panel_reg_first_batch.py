@@ -14,7 +14,7 @@ if __name__ == "__main__":
     data = Data(par)
     reload =False
 
-    save_dir = Constant.DROP_RES_DIR + f'/ss/05_no_coverage/'
+    save_dir = Constant.EMB_PAPER + f'/res/ss/05_no_coverage/'
     os.makedirs(save_dir, exist_ok=True)
     with_correct_first_date =True
 

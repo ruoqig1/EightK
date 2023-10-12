@@ -2,9 +2,11 @@
 
 # Make the script executable
 chmod +x $0
-
-# Loop from 0 to 18
-for i in $(seq 0 18); do
+# Define the upper limit as a variable 0 18 for full
+lower_limit=9
+upper_limit=9
+# Loop from lower_limit to upper_limit
+for i in $(seq $lower_limit $upper_limit); do
   # Define a temporary PBS script name
   TEMP_PBS="temp_script_vec.pbs"
 

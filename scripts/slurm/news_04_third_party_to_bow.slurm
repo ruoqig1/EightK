@@ -15,7 +15,6 @@
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
 
-
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --mem=12G

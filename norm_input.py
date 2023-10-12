@@ -41,9 +41,8 @@ if __name__ == "__main__":
     df = pd.read_pickle(load_dir + 'main_df.p')
     print('Loaded Df', flush=True)
     df = set_ids_to_eight_k_df(df, par)
-
     # for norm in [Normalisation.ZSCORE,Normalisation.MINMAX, Normalisation.RANK]:
-    for norm in [Normalisation.RANK]:
+    for norm in [Normalisation.ZSCORE,Normalisation.MINMAX]:
         par.train.norm = norm
         save_dir = par.get_training_norm_dir()  # where we will save the whole file, it's zscore dependant
         x = np.load(load_dir + 'x.npy')
@@ -53,6 +52,7 @@ if __name__ == "__main__":
             ind = df['date'].dt.year==year
             df.loc[ind,:].to_pickle(save_dir+f'df_{year}.p')
             x.loc[ind,:].to_pickle(save_dir+f'x_{year}.p')
+            print('Saving',save_dir,year,flush=True)
 
 
 

@@ -1,9 +1,20 @@
 # TODO 
 TODO:
 
-TRAINING OF THE MODEL:
-    - KEEP THE YEARLY MODEL
-    - HAVE A CODE SAVING PER YEAR ALREADY PRE-PROCESSED STUFF. 
-        - get a parameter based stuff
-    - OVERWRITTE THE SPLIT_DATA funciton in the main training. 
-    
+COSINE SIMILARITIES
+* we want the news about the stocks arround the event (20 days befores, 20 days after)\
+Save in the format:
+* Date 8k
+* evttimes (-20,+20)
+* max cosine sim on that days??? 
+
+
+
+
+
+# Data for Attila
+* roughly same format as now
+* add abnormal return on the day and cumualted a few days beore and after events .
+* add the prn correctly
+* 
+

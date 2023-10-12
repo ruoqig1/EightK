@@ -12,6 +12,21 @@ import socket
 import os
 
 
+def dict_to_string_for_dir(d:dict):
+    s = ''
+    for k in d.keys():
+        if d[k] is not None:
+            # we only add to the string name if a parameters is not none. That allows us to keep compatible stuff with old models by adding new parameters with None
+            # v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
+            if type(d[k]) in [type(np.array([])), type([])]:
+                v = len(d[k])
+                if v == 1:
+                    v = d[k][0]
+            else:
+                v = d[k]
+            s += f'{k}{v}'
+    return s
+
 
 ##################
 # Enum
@@ -21,6 +36,8 @@ class NewsSource(Enum):
     WSJ = 'wsj'
     EIGHT_LEGAL ='eight_legal'
     EIGHT_PRESS ='eight_press'
+    NEWS_REF ='NEWS_REF'
+    NEWS_THIRD ='NEWS_THIRD'
 
 class PredModel(Enum):
     RIDGE = 'RIDGE'
@@ -40,6 +57,8 @@ class OptModelType(Enum):
     OPT_2b6 ='facebook/opt-2.7b'
     OPT_6b7 ='facebook/opt-6.7b'
     OPT_13b ='facebook/opt-13b'
+    OPT_30b ='facebook/opt-30b'
+    OPT_66b ='facebook/opt-66b'
     OPT_175b ='facebook/opt-175b'
     BOW1 ='BOW1'
 
@@ -55,12 +74,16 @@ class Constant:
         # main_dir = '/media/antoine/ssd_ntfs//wsj_openai/'
         MAIN_DIR = './'
         HUGGING_DIR = None
-    elif socket.gethostname() in ['rdl-orlr7x.desktop.cloud.unimelb.edu.au']:
+    elif socket.gethostname() in ['rdl-7enbvm.desktop.cloud.unimelb.edu.au']:
         MAIN_DIR = '/mnt/layline/project/eightk/'
         HUGGING_DIR = None
     else:
         MAIN_DIR = '/data/gpfs/projects/punim2039/EightK/'
         HUGGING_DIR = '/data/gpfs/projects/punim2039/hugging/'
+
+    HOME_DIR = os.path.expanduser("~")
+    EMB_PAPER = os.path.join(HOME_DIR, 'Dropbox/Apps/Overleaf/052-EMB/res/')
+    DROPBOX_COSINE_DATA = os.path.join(HOME_DIR, 'Dropbox/AB-AD_Share/cosine/data/')
 
     FRED_API = 'cfc526395a5631650ec0b7ee96b149f4'
 
@@ -115,7 +138,7 @@ class Constant:
         9.01: "Financial Statements and Exhibits"
     }
 
-    IS_VM = socket.gethostname()=='rdl-orlr7x.desktop.cloud.unimelb.edu.au'
+    IS_VM = socket.gethostname()=='rdl-7enbvm.desktop.cloud.unimelb.edu.au'
 
 ##################
 # params classes
@@ -129,6 +152,39 @@ class DataParams:
         self.pickle_ind_df = Constant.MAIN_DIR + 'data/pickle_ind_df/'
 
         self.data_to_use_name = 'load_xy_ravenpack_monthly_vy'
+
+class AbnormalRetParams:
+    def __init__(self):
+        self.ev_window = 20
+        self.gap_window = 50
+        self.rolling_window = 100
+        self.mkt_col = ['mktrf', 'one']
+        self.min_rolling = 70
+        self.min_test = 41
+    def get_unique_name(self):
+        # create the directory
+        d = self.__dict__
+        s=''
+        for k in d.keys():
+            if d[k] is not None:
+                # we only add to the string name if a parameters is not none. That allows us to keep compatible stuff with old models by adding new parameters with None
+                # v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
+                if type(d[k]) in [type(np.array([])),type([])]:
+                    v = len(d[k])
+                    if v ==1:
+                        v = d[k][0]
+                else:
+                    v = d[k]
+                s+= f'{k}{v}'
+        return s
+
+
+class TfIdfParams:
+    def __init__(self):
+        self.dict_size = int(1e6)  # or any other value you've defined earlier
+        self.no_below = 20
+        self.no_above = 0.1
+
 
 
 class EncodingParams:
@@ -167,6 +223,7 @@ class TrainerParams:
         self.save_ins = False
         self.tnews_only = False
         self.l1_ratio = [0.5]
+        self.abny = None # if True, we train the model o nabnormal return
 
         # this is the number of individual saving chunks.
         # by this we mean the number of individual df contianing some oos performance that will be saved before merged.
@@ -186,12 +243,21 @@ class Params:
         self.train = TrainerParams()
         self.rf = RandomFeaturesParams()
         self.grid = GridParams()
+        self.tfidf = TfIdfParams()
         self.model_ran_dir = Constant.MAIN_DIR+'res/model_ran/'
 
-    def get_vec_process_dir(self):
+    def get_vec_process_dir(self, merged_bow = False, index_permno_only = False):
         # create the directory
-        save_dir = Constant.MAIN_DIR + f'data/vec_process/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
-        os.makedirs(save_dir, exist_ok=True)
+        if not merged_bow:
+            save_dir = Constant.MAIN_DIR + f'data/vec_process/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+            os.makedirs(save_dir, exist_ok=True)
+        else:
+            save_dir = Constant.MAIN_DIR + f'data/vec_merged_df/'
+            os.makedirs(save_dir, exist_ok=True)
+            if index_permno_only:
+                save_dir += f'df_{self.enc.opt_model_type.name}_{self.enc.news_source.name}_index.p'
+            else:
+                save_dir += f'df_{self.enc.opt_model_type.name}_{self.enc.news_source.name}.p'
         return save_dir
 
     def save_model_params_in_main_file(self):
@@ -218,23 +284,29 @@ class Params:
         if (date is not None):
             self.load(load_dir=self.model_ran_dir,file_name=date_dict[date])
 
+
+    def get_tf_idf_dir(self):
+        # create the directory
+        s_enc = dict_to_string_for_dir(self.enc.__dict__)
+        # s_tf = dict_to_string_for_dir(self.tfidf.__dict__)
+        save_dir = self.data.base_data_dir + f'tfidf/{s_enc}/'
+        os.makedirs(save_dir, exist_ok=True)
+        return save_dir
+    def get_cosine_dir(self,temp=False):
+        # create the directory
+        s_enc = dict_to_string_for_dir(self.enc.__dict__)
+        # s_tf = dict_to_string_for_dir(self.tfidf.__dict__)
+        if temp:
+            save_dir = self.data.base_data_dir + f'temp_cosine/{s_enc}/'
+        else:
+            save_dir = self.data.base_data_dir + f'cosine/{s_enc}/'
+        os.makedirs(save_dir, exist_ok=True)
+        return save_dir
+
+
     def get_res_dir(self,temp=True):
         # create the directory
-        d = self.train.__dict__
-        s=''
-        for k in d.keys():
-            if d[k] is not None:
-                # we only add to the string name if a parameters is not none. That allows us to keep compatible stuff with old models by adding new parameters with None
-                # v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
-                if type(d[k]) in [type(np.array([])),type([])]:
-                    v = len(d[k])
-                    if v ==1:
-                        v = d[k][0]
-                else:
-                    v = d[k]
-
-                s+= f'{k}{v}'
-
+        s = dict_to_string_for_dir(self.train.__dict__)
         temp_str = '/temp'if temp else ''
         save_dir = Constant.MAIN_DIR + f'res{temp_str}/vec_pred/{s}/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
         os.makedirs(save_dir, exist_ok=True)
