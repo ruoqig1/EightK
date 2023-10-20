@@ -12,24 +12,7 @@ from didipack import PandasPlus
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
-
-def plot_ev(m,s,c,do_cumulate = True,label_txt = 'News'):
-    if do_cumulate:
-        m = m.cumsum()
-        s = np.sqrt((s ** 2).cumsum())
-    else:
-        s = s**2
-    s = s / np.sqrt(c)
-    color = ['k', 'b']
-    k = -1
-    for x in m.columns:
-        k += 1
-        plt.plot(m.index, m[x].values, label=f'{label_txt} = {x}', color=color[k])
-        plt.fill_between(m.index, m[x].values - t_val * s[x].values, m[x].values + t_val * s[x].values, alpha=0.5, color=color[k])
-    plt.tight_layout()
-    plt.legend()
-    plt.grid()
-    plt.tight_layout()
+from utils_local.plot import plot_ev
 
 
 if __name__ == "__main__":
@@ -37,7 +20,7 @@ if __name__ == "__main__":
     par = Params()
     data = Data(par)
     use_reuters_news = False
-    use_constant_in_abret = True
+    use_constant_in_abret = False
     winsorise_ret = -1
     do_cumulate = True
     # t_val = 1.96
@@ -45,7 +28,7 @@ if __name__ == "__main__":
     use_relase = False
     pred_col = 'pred'
     # pred_col = 'pred_rnd_2'
-    model_index = 1 # 2 is our main
+    model_index = 2 # 2 is our main
     start_ret ='abret'
     sigma_col = 'sigma_ret_train' if start_ret == 'ret' else 'sigma_ra'
 
@@ -57,6 +40,7 @@ if __name__ == "__main__":
     # load models
     # load_dir = 'res/temp_new/'
     load_dir = 'res/model_final_res/'
+    # load_dir = 'res/model_final_long/'
     os.listdir(load_dir)
     df = pd.read_pickle(load_dir + f'new_{model_index}.p')
     print(df.groupby(df['date'].dt.year)['permno'].count())
@@ -66,8 +50,8 @@ if __name__ == "__main__":
         df['release'] = 1
 
     df= df.groupby(['date','permno','news0','release'])['pred_prb','abret'].mean().reset_index()
-    df['pred']  = np.sign(df['pred_prb']-0.5)
-    # df['pred']  = np.sign(df['pred_prb']-df['pred_prb'].mean())
+    # df['pred']  = np.sign(df['pred_prb']-0.5)
+    df['pred']  = np.sign(df['pred_prb']-df['pred_prb'].mean())
 
     if use_reuters_news:
         news = pd.read_pickle('data/cleaned/some_news/ref.p')
@@ -110,6 +94,12 @@ if __name__ == "__main__":
     df['year'] = df['date'].dt.year
     df = df.merge(data.load_mkt_cap_yearly())
 
+    df['good_eight_k'] = df['abret'] > 0
+    df['year'] = df['date'].dt.year
+
+    # df.groupby(['permno', 'mcap_d'])['good_eight_k'].mean().reset_index().groupby('mcap_d')['good_eight_k'].mean().plot()
+    # plt.show()
+
     df = df.dropna()
 
     df['pred'].mean()
@@ -151,6 +141,8 @@ if __name__ == "__main__":
 
     # #LONG SHORT VW CLEAN
     print(df.shape)
+
+    size_ind = df['mcap_d']<=8
     df['w_ret2'] = df[start_ret]*df['mcap']
     long_short = []
     for pred in [-1,1]:

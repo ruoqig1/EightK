@@ -25,7 +25,7 @@ from utils_local.zip import decompress_gz_file, unzip_all
 
 
 
-def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:int, par:Params, year:int):
+def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:int, par:Params, year:int, start_save_id = 0):
     """
     Vectorize textual data in batches and save the results.
 
@@ -39,7 +39,7 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
     batch_size (int): The number of rows to be processed in each batch. (in the GPU)
     par (Params): A custom Params object that contains directory information.
     year (int): Year information, used for naming saved files.
-
+    start_id (int): default 0, a value to say the batch number minimum to save in
     Returns:
     None. Saves vectorized data as pickle files in the directory specified by the Params object.
     """
@@ -57,7 +57,7 @@ def vectorise_in_batch(id_col:tuple,df:pd.DataFrame, save_size:int,batch_size:in
 
     save_chunk_of_index = np.array_split(df.index, int(np.ceil(df.shape[0] / save_size)))
     for save_id in range(len(save_chunk_of_index)):
-        save_dest = save_dir + f'{year}_{save_id}.p'
+        save_dest = save_dir + f'{year}_{int(save_id + start_save_id)}.p'
         if os.path.exists(save_dest):
             print(save_dest, 'already processed', flush=True)
         else:

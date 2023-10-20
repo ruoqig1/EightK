@@ -26,6 +26,7 @@ from utils_local.vec_functions import vectorise_in_batch
 
 def load_and_process_eight_k_legal_or_pressed(par, args, press_or_legal ='legal'):
     save_size = 1000
+    batch_size = 2
     # load and pre process data (code specific)
     data = Data(par)
     # those are the events for which we have a match in crsp
@@ -61,9 +62,22 @@ def load_and_process_eight_k_legal_or_pressed(par, args, press_or_legal ='legal'
     return id_col,save_size,batch_size,year,df
 
 
-
+def drop_already_process_text_from_df(df,par):
+    save_dir = par.get_vec_process_dir()
+    id_processed = []
+    for f in tqdm.tqdm([x for x in os.listdir(save_dir) if str(year) in x],'remove processed event'):
+        id_processed.append(int(f.split('.p')[-2].split('_')[1]))
+        temp = pd.read_pickle(save_dir+f)
+        ind = ~df.set_index(id_col).index.isin(temp.index)
+        df = df.loc[ind,:]
+    if len(id_processed)>0:
+        max_id_processed = max(id_processed)
+    else:
+        max_id_processed = 0
+    return df, max_id_processed
 
 def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
+    batch_size = 1
     if par.enc.opt_model_type == OptModelType.BOW1:
         save_size = 10000
     else:
@@ -97,18 +111,14 @@ if __name__ == "__main__":
     if socket.gethostname() == '3330L-214940-M':
         # (local debug)
         par.enc.opt_model_type = OptModelType.BOW1
-        batch_size = 2
-
         par.enc.news_source = NewsSource.EIGHT_LEGAL
         id_col, save_size, batch_size, year, df = load_and_process_eight_k_legal_or_pressed(par, args)
         save_size=10
-
         # launch the vectorisation
         vectorise_in_batch(id_col=id_col, df=df, save_size=save_size, batch_size=batch_size, par=par, year=year)
     else:
-        # par.enc.opt_model_type = OptModelType.OPT_13b
-        par.enc.opt_model_type = OptModelType.OPT_30b
-        batch_size = 2
+        par.enc.opt_model_type = OptModelType.OPT_13b
+        # par.enc.opt_model_type = OptModelType.OPT_30b
 
     if args.bow==1:
         par.enc.opt_model_type = OptModelType.BOW1
@@ -141,7 +151,11 @@ if __name__ == "__main__":
             par.enc.news_source = NewsSource.NEWS_THIRD
             id_col, save_size, batch_size, year, df = load_and_process_news_one_stock_ref_or_third(par, args,'third')
         # launch the vectorisation
-        vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
+        # TO KEEP, this can be usefull if you one day need to change the processing size
+        # df, max_id_processed = drop_already_process_text_from_df(df, par)
+        max_id_processed = 0
+
+        vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year, start_save_id= max_id_processed)
 
 
     # data = Data(par)

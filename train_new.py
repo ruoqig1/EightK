@@ -31,12 +31,20 @@ def load_data_for_this_chunks(par: Params):
     df = df.reset_index(drop=True)
     x = x.reset_index(drop=True)
 
-    if par.train.abny:
-        print('USING ABNORMAL RET')
-        y = df[['abret']]
+    if par.train.abny is not None:
+        # ugly set of conditions ot make it compatible with old versions
+        if par.train.abny ==True:
+            y = df[['abret']]
+        if par.train.abny =='abn20':
+            temp = Data(par).load_abn_return()
+            temp = temp.loc[temp['evttime']>=-1,:]
+            temp = temp.groupby(['date','permno'])['abret'].mean().reset_index().rename(columns={'abret':'abret_long'})
+            df = df.merge(temp,how='left')
+            ind = pd.isna(df['abret_long'])
+            df.loc[ind,'abret_long'] = df.loc[ind,'abret']
+            y = df[['abret_long']]
     else:
         y = df[['ret']]
-
 
     y = np.sign(y)
     y = y.replace({0: 1})

@@ -10,22 +10,8 @@ import numpy as np
 import pandas as pd
 import socket
 import os
+import hashlib
 
-
-def dict_to_string_for_dir(d:dict):
-    s = ''
-    for k in d.keys():
-        if d[k] is not None:
-            # we only add to the string name if a parameters is not none. That allows us to keep compatible stuff with old models by adding new parameters with None
-            # v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
-            if type(d[k]) in [type(np.array([])), type([])]:
-                v = len(d[k])
-                if v == 1:
-                    v = d[k][0]
-            else:
-                v = d[k]
-            s += f'{k}{v}'
-    return s
 
 
 ##################
@@ -37,6 +23,7 @@ class NewsSource(Enum):
     EIGHT_LEGAL ='eight_legal'
     EIGHT_PRESS ='eight_press'
     NEWS_REF ='NEWS_REF'
+    NEWS_REF_ON_EIGHT_K ='NEWS_REF_ON_EIGHT_K'
     NEWS_THIRD ='NEWS_THIRD'
 
 class PredModel(Enum):
@@ -207,8 +194,9 @@ class RandomFeaturesParams:
         self.para_nb_of_list_group=20
         self.para_id=0
 
+
 class GridParams:
-    def __int__(self):
+    def __init__(self):
         self.year_id = 0
 
 class TrainerParams:
@@ -231,12 +219,21 @@ class TrainerParams:
         self.nb_chunks = None
         #
         self.min_nb_chunks_in_cluster = None
+        self.use_tf_models = None
+        self.batch_size = None
+        self.adam_rate = None
+        self.patience = None # 5
+        self.monitor_loss = None  # ='loss'
+        self.max_epoch = None  # ='loss'
+        self.train_on_gpu = None
+        # now we put here the tf model parameters that we have to define
 
 # store all basic_parameters into a single object
 class Params:
     def __init__(self):
         self.name_detail = 'default'
         self.name = ''
+        self.use_hash = True
         self.seed = 12345
         self.data = DataParams()
         self.enc = EncodingParams()
@@ -287,15 +284,13 @@ class Params:
 
     def get_tf_idf_dir(self):
         # create the directory
-        s_enc = dict_to_string_for_dir(self.enc.__dict__)
-        # s_tf = dict_to_string_for_dir(self.tfidf.__dict__)
+        s_enc = self.dict_to_string_for_dir(self.enc.__dict__)
         save_dir = self.data.base_data_dir + f'tfidf/{s_enc}/'
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
     def get_cosine_dir(self,temp=False):
         # create the directory
-        s_enc = dict_to_string_for_dir(self.enc.__dict__)
-        # s_tf = dict_to_string_for_dir(self.tfidf.__dict__)
+        s_enc = self.dict_to_string_for_dir(self.enc.__dict__)
         if temp:
             save_dir = self.data.base_data_dir + f'temp_cosine/{s_enc}/'
         else:
@@ -306,7 +301,7 @@ class Params:
 
     def get_res_dir(self,temp=True):
         # create the directory
-        s = dict_to_string_for_dir(self.train.__dict__)
+        s = self.dict_to_string_for_dir(self.train.__dict__)
         temp_str = '/temp'if temp else ''
         save_dir = Constant.MAIN_DIR + f'res{temp_str}/vec_pred/{s}/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
         os.makedirs(save_dir, exist_ok=True)
@@ -315,7 +310,10 @@ class Params:
 
     def get_training_dir(self):
         # create the directory
-        save_dir = Constant.MAIN_DIR + f'data/training/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+        if self.train.use_tf_models is None:
+            save_dir = Constant.MAIN_DIR + f'data/training/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+        else:
+            save_dir = Constant.MAIN_DIR + f'data/training_tf/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
 
@@ -406,7 +404,6 @@ class Params:
                     for key2, vv in v.__dict__.items():
                         temp = pd.DataFrame(data=[str(key) + '_' + str(key2), vv], index=['key', 'value']).T
                         df = df.append(temp)
-
                 except:
                     temp = pd.DataFrame(data=[key, v], index=['key', 'value']).T
                     df = df.append(temp)
@@ -450,3 +447,28 @@ class Params:
             save_dir += f'{k[0:3]}{xx}'.replace('.','')
         os.makedirs(save_dir,exist_ok=True)
         return save_dir
+
+    def dict_to_string_for_dir(self, d:dict):
+        if self.use_hash:
+            valid_params = {k: v for k, v in d.items() if v is not None}
+            # Convert the dictionary to a string representation
+            param_string = str(valid_params)
+
+            # Create a hash of the string
+            hash_object = hashlib.sha256(param_string.encode())
+            s = hash_object.hexdigest()
+        else:
+            # the old version for backward compatibility
+            s = ''
+            for k in d.keys():
+                if d[k] is not None:
+                    # we only add to the string name if a parameters is not none. That allows us to keep compatible stuff with old models by adding new parameters with None
+                    # v= d[k] if type(d[k]) not in [type(np.array([])),type([])] else len(d[k])
+                    if type(d[k]) in [type(np.array([])), type([])]:
+                        v = len(d[k])
+                        if v == 1:
+                            v = d[k][0]
+                    else:
+                        v = d[k]
+                    s += f'{k}{v}'
+        return s

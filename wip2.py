@@ -9,30 +9,6 @@ from data import *
 from utils_local.nlp_ticker import *
 from statsmodels import api as sm
 
-def load_and_preprocess(par):
-    data = Data(par)
-    df =data.load_crsp_all()
-    # load the event to comput
-    per = data.load_some_relevance_icf()
-    per['date'] = pd.to_datetime(per['adate'])
-    per = per.dropna(subset='date')
-    per = per.loc[per['date'].dt.year>=2004,:]
-    per['permno']=per['permno'].astype(int)
-    ev = per[['date','permno']].dropna().drop_duplicates()
-    ev['ev']= True
-
-    # load ff and merge
-    ff = data.load_ff5()
-    df = df.merge(ff)
-    df['ret']-=df['rf']
-    df = df.merge(ev,how='left')
-    df['ev'] = df['ev'].fillna(False)
-    print(df['ev'].sum(),ev.shape,flush=True)
-
-    df = df.sort_values(['permno','date'])
-    df = df.reset_index(drop=True)
-    df['one'] = 1.0
-    return df
 
 
 
@@ -40,22 +16,15 @@ if __name__ == "__main__":
     par = Params()
     data = Data(par)
 
-    df = data.load_crsp_daily()
-    df['ret'] = pd.to_numeric(df['ret'],errors='coerce')
-    df['year'] = df['date'].dt.year
-    df=df.merge(data.load_mkt_cap_yearly())
-    df = df.loc[df['mcap_d']>=8,:]
+    load_dir = data.p_to_vec_main_dir + '/single_stock_news_to_vec/'
+    # load_dir = data.p_news_year
+    ev = data.load_list_by_date_time_permno_type()
+    ev['date'] = pd.to_datetime(ev['adate'])
+    ev= ev[['date','ticker','atime']].dropna()
 
-    t=df.groupby('permno')['ret'].aggregate(['mean','std'])
-    t['mean']*=20
-    t['std']*=np.sqrt(20)
-    t.median()
-
-
-
-
-    # os.listdir(data.p_eight_k_clean)
-    # df = pd.read_pickle(data.p_eight_k_clean+'legal_2006.p')
-    # df = df.reset_index(drop=True)
-    #
-    # pyperclip.copy(df.loc[10000,'txt'])
+    res = pd.DataFrame()
+    for f in tqdm.tqdm(os.listdir(load_dir)):
+        df =pd.read_pickle(load_dir+f)
+        df = df[['id','alert','timestamp','date','ticker']].merge(ev)
+        res = pd.concat([res,df],axis=0)
+        res.to_pickle(data.p_dir+'news_per_stock_id.p')

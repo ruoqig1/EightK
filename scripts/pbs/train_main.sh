@@ -5,7 +5,7 @@ chmod +x $0
 
 # Define the upper limit as a variable
 lower_limit=0
-upper_limit=65
+upper_limit=32
 # Loop from 0 to 134
 for i in $(seq $lower_limit $upper_limit); do
 
@@ -29,15 +29,15 @@ for i in $(seq $lower_limit $upper_limit); do
 #!/bin/bash
 #PBS -P nz97
 #PBS -q normal
-#PBS -l walltime=5:00:00
+#PBS -l walltime=10:00:00
 #PBS -l storage=scratch/nz97
-#PBS -l mem=36GB
+#PBS -l mem=96GB
 #PBS -l ncpus=4
 #PBS -M antoine.didisheim@unimelb.edu.au
 #PBS -m ${email_flag}
-#PBS -N train_main_${i}
-#PBS -o out/train_main_${i}.out
-#PBS -e out/train_main_${i}.err
+#PBS -N train_new_${i}
+#PBS -o out/train_new_${i}.out
+#PBS -e out/train_new_${i}.err
 
 cd /scratch/nz97/ad4734/EightK/
 module load python3/3.10.4
@@ -49,5 +49,5 @@ EOL
   qsub $TEMP_PBS
 
   # Sleep for a moment if needed to avoid overwhelming the job scheduler
-  sleep 5
+  sleep 2
 done

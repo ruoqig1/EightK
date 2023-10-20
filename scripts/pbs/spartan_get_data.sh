@@ -3,11 +3,13 @@
 scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/training_norm/OPT_13b/EIGHT_LEGAL/* data/training_norm/OPT_13b/EIGHT_LEGAL/
 
 
-scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/cleaned/eight_k_first_process/*2013* /scratch/nz97/ad4734/EightK/data/cleaned/eight_k_first_process
+scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/abn_ev_monly.p /scratch/nz97/ad4734/EightK/data/p/
+
 
 
 scp -r ~/.ssh/ ./data/tfidf/* adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK//data/tfidf/
-scp -r ~/.ssh/ ./data/temp_cosine/* adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK//data/temp_cosine/
+scp -r ~/.ssh/ adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/training_norm/OPT_13b/NEWS_REF_ON_EIGHT_K/*  ./
+scp -r ~/.ssh/ ./res/temp/vec_pred/* adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/res/temp/vec_pred/
 
 
 # nohup scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/*.p /scratch/nz97/ad4734/EightK/da &

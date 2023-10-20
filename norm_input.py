@@ -32,7 +32,13 @@ if __name__ == "__main__":
     # BUILD THE MODEL AND DEFINE PARAMETERS
     par = Params()
     par.enc.opt_model_type = OptModelType.OPT_13b
-    par.enc.news_source = NewsSource.EIGHT_LEGAL
+    if args.legal == 1:
+        par.enc.news_source = NewsSource.EIGHT_LEGAL
+    if args.ref == 1:
+        par.enc.news_source = NewsSource.NEWS_REF
+    if args.news_on_eight == 1:
+        par.enc.news_source = NewsSource.NEWS_REF_ON_EIGHT_K
+    print(par.enc.news_source,flush=True)
     par.train.tnews_only = True
     load_dir = par.get_training_dir() # the ouptut of merging the vectors
 
@@ -40,7 +46,8 @@ if __name__ == "__main__":
     print('Start loading Df', flush=True)
     df = pd.read_pickle(load_dir + 'main_df.p')
     print('Loaded Df', flush=True)
-    df = set_ids_to_eight_k_df(df, par)
+    if args.legal == 1:
+        df = set_ids_to_eight_k_df(df, par)
     # for norm in [Normalisation.ZSCORE,Normalisation.MINMAX, Normalisation.RANK]:
     for norm in [Normalisation.ZSCORE,Normalisation.MINMAX]:
         par.train.norm = norm
@@ -52,7 +59,7 @@ if __name__ == "__main__":
             ind = df['date'].dt.year==year
             df.loc[ind,:].to_pickle(save_dir+f'df_{year}.p')
             x.loc[ind,:].to_pickle(save_dir+f'x_{year}.p')
-            print('Saving',save_dir,year,flush=True)
+            print('Saving',save_dir,year,x.loc[ind,:].shape,flush=True)
 
 
 

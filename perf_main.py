@@ -50,7 +50,6 @@ if __name__ == "__main__":
     print(par.train.T_train, par.train.l1_ratio, df.shape, par.train.tnews_only)
     print('Model:')
     print('ACCURACY OVERALL', df['acc'].mean())
-    print('Sanity check', df['pred'].mean())
 
     save_dir ='res/new_temp/'
     os.makedirs(save_dir,exist_ok=True)

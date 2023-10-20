@@ -333,7 +333,7 @@ class Data:
             df = ev.merge(rav, how='left')
             df['relevance'] = df['relevance'].fillna(0.0)
             df.columns
-            rel_max = df.groupby(['items', 'adate', 'atime', 'year', 'permno', 'cat','cik','form_id'])['relevance'].max().reset_index()
+            rel_max = df.groupby(['items', 'adate', 'atime','rtime', 'year', 'permno', 'cat','cik','form_id'])['relevance'].max().reset_index()
             rel_max['no_rel'] = (rel_max['relevance'] == 0) * 1
             rel_max = rel_max.loc[rel_max['year'] >= 2000, :]
 
@@ -650,7 +650,7 @@ class Data:
     def load_abn_return(self,model = 1):
         if model ==1:
             # use market model
-            df = pd.read_pickle(self.p_dir+'abn_ev_m.p')
+            df = pd.read_pickle(self.p_dir+'abn_ev_monly.p')
         return df
 
     def load_return_for_nlp_on_eightk(self,reload=False):
@@ -696,6 +696,10 @@ class Data:
             df = pd.read_pickle(self.p_dir+'load_crsp_all.p')
         return df
 
+    def load_main_cosine(self):
+        save_dir = self.par.get_cosine_dir(temp=False)
+        df = pd.read_pickle(save_dir + 'df.p')
+        return df
     def load_crsp_low_shares(self,reload = False):
         if reload:
             df = pd.read_csv(self.raw_dir+'crsp_low_shares.csv')
@@ -743,5 +747,6 @@ if __name__ == "__main__":
 
     self = Data(Params())
     reload = True
+
 
 
