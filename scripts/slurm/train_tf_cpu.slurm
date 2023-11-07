@@ -1,9 +1,9 @@
 #!/bin/bash -l
-#SBATCH --job-name tf_cpu
-#SBATCH --output=/home/adidishe/EightK/out/tf_cpu_%a.out
-#SBATCH --error=/home/adidishe/EightK/out/tf_cpu_%a.err
+#SBATCH --job-name tf_no_norm
+#SBATCH --output=/home/adidishe/EightK/out/tf_no_norm_%a.out
+#SBATCH --error=/home/adidishe/EightK/out/tf_no_norm_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
-#SBATCH --array=0-65
+#SBATCH --array=0-19
 
 #SBATCH --mail-type=ALL # notifications for job start, end, and failure
 #SBATCH --mail-user=antoine.didisheim@unimelb.edu.autr
@@ -11,8 +11,8 @@
 #SBATCH --nodes 1
 #SBATCH --ntasks 1
 #SBATCH --mem 8G
-#SBATCH --cpus-per-task 4
-#SBATCH --time 24:00:00
+#SBATCH --cpus-per-task 8
+#SBATCH --time 3-0:00:00
 
 
 module load foss/2022a

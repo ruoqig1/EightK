@@ -33,9 +33,9 @@ if __name__ == "__main__":
     par = Params()
     ret_cols = ['ret_m', 'ret_5', 'ret_20']
 
-    temp_dir ='res/model_tf_2/'
+    temp_dir ='res/model_daily_1/'
     os.makedirs(temp_dir,exist_ok=True)
-    for i in range(6):
+    for i in range(8):
     # for i in [0]:
         par = get_main_experiments(i,train=False)
         try:

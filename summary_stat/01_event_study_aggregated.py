@@ -92,7 +92,6 @@ if __name__ == "__main__":
     pivot_df = df.groupby(['permno', 'fdate', 'items']).size().unstack(fill_value=0)
     pivot_df[pivot_df > 1] = 1  # If there are multiple occurrences of the same item, set them to 1
 
-
     # Compute probabilities
     P_B = pivot_df.mean()
     P_A_and_B = pivot_df.T.dot(pivot_df) / len(pivot_df)

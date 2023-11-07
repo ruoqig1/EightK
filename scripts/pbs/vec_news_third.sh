@@ -4,8 +4,8 @@
 chmod +x $0
 
 # Define the upper limit as a variable 0 26 for full
-lower_limit=17
-upper_limit=17
+lower_limit=0
+upper_limit=19
 # Loop from lower_limit to upper_limit
 for i in $(seq $lower_limit $upper_limit); do
 

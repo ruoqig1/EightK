@@ -24,7 +24,8 @@ class NewsSource(Enum):
     EIGHT_PRESS ='eight_press'
     NEWS_REF ='NEWS_REF'
     NEWS_REF_ON_EIGHT_K ='NEWS_REF_ON_EIGHT_K'
-    NEWS_THIRD ='NEWS_THIRD'
+    NEWS_THIRD ='NEWS_THIRD' # third party news
+    NEWS_SINGLE ='NEWS_SINGLE' # both third party and ref news, attached to a single stock
 
 class PredModel(Enum):
     RIDGE = 'RIDGE'
@@ -72,7 +73,11 @@ class Constant:
     EMB_PAPER = os.path.join(HOME_DIR, 'Dropbox/Apps/Overleaf/052-EMB/res/')
     DROPBOX_COSINE_DATA = os.path.join(HOME_DIR, 'Dropbox/AB-AD_Share/cosine/data/')
 
+
+    COLOR_DUO = ['k', 'b']
     FRED_API = 'cfc526395a5631650ec0b7ee96b149f4'
+
+    DRAFT_1_CSV_PATH = 'draft_1/csv/'
 
     DROP_RES_DIR = '/Users/adidisheim/Dropbox/Apps/Overleaf/EightKEarlyAnalysis/'
 
@@ -226,7 +231,17 @@ class TrainerParams:
         self.monitor_loss = None  # ='loss'
         self.max_epoch = None  # ='loss'
         self.train_on_gpu = None
+
+        self.apply_filter = None
+        self.filter_on_reuters = None
+        self.filter_on_alert = None
+        self.filter_on_prn = None
+        self.filter_on_cosine = None
         # now we put here the tf model parameters that we have to define
+
+        # for checking the logistic works
+        self.sanity_check = None
+
 
 # store all basic_parameters into a single object
 class Params:
@@ -290,7 +305,7 @@ class Params:
         return save_dir
     def get_cosine_dir(self,temp=False):
         # create the directory
-        s_enc = self.dict_to_string_for_dir(self.enc.__dict__)
+        s_enc = self.dict_to_string_for_dir(self.enc.__dict__,old_style=True)
         if temp:
             save_dir = self.data.base_data_dir + f'temp_cosine/{s_enc}/'
         else:
@@ -310,10 +325,13 @@ class Params:
 
     def get_training_dir(self):
         # create the directory
-        if self.train.use_tf_models is None:
-            save_dir = Constant.MAIN_DIR + f'data/training/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+        if self.train.sanity_check is None:
+            if self.train.use_tf_models is None:
+                save_dir = Constant.MAIN_DIR + f'data/training/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+            else:
+                save_dir = Constant.MAIN_DIR + f'data/training_tf/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
         else:
-            save_dir = Constant.MAIN_DIR + f'data/training_tf/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+            save_dir = 'logistic_sanity_check/tf/'
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
 
@@ -448,8 +466,8 @@ class Params:
         os.makedirs(save_dir,exist_ok=True)
         return save_dir
 
-    def dict_to_string_for_dir(self, d:dict):
-        if self.use_hash:
+    def dict_to_string_for_dir(self, d:dict, old_style =False):
+        if (self.use_hash) & (old_style==False):
             valid_params = {k: v for k, v in d.items() if v is not None}
             # Convert the dictionary to a string representation
             param_string = str(valid_params)

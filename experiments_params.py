@@ -7,7 +7,7 @@ def get_main_experiments(id_comb:int,train=True,train_gpu = False) -> Params:
     print('START WORKING ON ',id_comb,flush=True)
     par=Params()
     par.enc.opt_model_type = OptModelType.OPT_13b
-    par.enc.news_source = NewsSource.NEWS_REF_ON_EIGHT_K
+    par.enc.news_source = NewsSource.NEWS_SINGLE
 
     par.train.testing_window = 1
     par.train.T_val = 2
@@ -23,20 +23,26 @@ def get_main_experiments(id_comb:int,train=True,train_gpu = False) -> Params:
     par.train.monitor_loss = 'loss'  # ='loss'
     par.train.max_epoch = 100  # ='loss'
     par.train.train_on_gpu = train_gpu
-    par.train.l1_ratio = [0.5]
+    # par.train.l1_ratio = [0.0] # 0.0 for ridge (which is what these assholes do....)
     # par.train.shrinkage_list = [0.001, 0.01, 0.1, 1, 10]
-    par.train.shrinkage_list = [0.00001,0.0001,0.001, 0.01, 0.1, 1]
+    par.train.shrinkage_list = [0.00001,0.0001,0.001, 0.01, 0.1]
+    # [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
     # par.train.shrinkage_list = [1.0]
 
     # year_id_list = np.arange(0,15,1) if train else [0]
-    year_id_list = np.arange(2012,2023,1) if train else [0]
-
+    year_id_list = np.arange(2004,2023,1) if train else [0]
+    par.train.apply_filter = None
+    par.train.filter_on_cosine = None
+    par.train.filter_on_alert = None
+    par.train.filter_on_prn = None
+    par.train.filter_on_reuters = None
+    par.train.abny = 'ret_m'
     grid = [
         ['train', 'T_train',[8]],
-        ['train', 'norm', [Normalisation.ZSCORE]], # ,Normalisation.MINMAX
-        ['train', 'l1_ratio', [[0.0], [0.5],[1.0]]],
-        ['train', 'abny', [True,False]],
-        ['grid', 'year_id', year_id_list]
+        ['train', 'norm', [Normalisation.NO,Normalisation.ZSCORE]], # ,Normalisation.MINMAX
+        ['train', 'l1_ratio', [[0.5],[0.0]]],
+        ['grid', 'year_id', year_id_list],
+        ['train', 'adam_rate', [0.001,0.01]]
     ]
     # par.train.T_train = -60
     par.update_param_grid(grid, id_comb=id_comb)
@@ -69,6 +75,50 @@ def get_experiment_for_paper_draft_in_oct_2023(id_comb:int,train=True) -> Params
         ['train', 'T_train',[8]],
         ['train', 'norm', [Normalisation.ZSCORE]], # ,Normalisation.MINMAX
         ['train', 'l1_ratio', [[0.0], [0.5],[1.0]]],
+        ['train', 'abny', [True,False]],
+        ['grid', 'year_id', year_id_list]
+    ]
+    # par.train.T_train = -60
+    par.update_param_grid(grid, id_comb=id_comb)
+    return par
+
+
+def predict_with_news_based_on_some_filters(id_comb:int,train=True,train_gpu = False) -> Params:
+    print('START WORKING ON ',id_comb,flush=True)
+    par=Params()
+    par.enc.opt_model_type = OptModelType.OPT_13b
+    par.enc.news_source = NewsSource.NEWS_REF_ON_EIGHT_K
+
+    par.train.testing_window = 1
+    par.train.T_val = 2
+
+    par.train.min_nb_chunks_in_cluster=1
+
+    par.train.pred_model = PredModel.LOGIT_EN
+    par.train.tnews_only = False
+    par.train.batch_size = 512
+    par.train.use_tf_models = True
+    par.train.adam_rate  = 0.001
+    par.train.patience = 3  # 5
+    par.train.monitor_loss = 'loss'  # ='loss'
+    par.train.max_epoch = 100  # ='loss'
+    par.train.train_on_gpu = train_gpu
+    par.train.l1_ratio = [0.5]
+    # par.train.shrinkage_list = [0.001, 0.01, 0.1, 1, 10]
+    par.train.shrinkage_list = [0.00001,0.0001,0.001, 0.01, 0.1, 1]
+    # par.train.shrinkage_list = [1.0]
+
+    # year_id_list = np.arange(0,15,1) if train else [0]
+    year_id_list = np.arange(2012,2023,1) if train else [0]
+    par.train.apply_filter = ['val','train']
+    par.train.filter_on_cosine = None
+    par.train.filter_on_alert = None
+    par.train.filter_on_prn = None
+    par.train.filter_on_reuters = None
+    grid = [
+        ['train', 'T_train',[8]],
+        ['train', 'norm', [Normalisation.ZSCORE]], # ,Normalisation.MINMAX
+        ['train', 'l1_ratio', [[0.5]]],
         ['train', 'abny', [True,False]],
         ['grid', 'year_id', year_id_list]
     ]

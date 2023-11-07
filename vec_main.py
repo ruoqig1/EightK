@@ -81,7 +81,7 @@ def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='
     if par.enc.opt_model_type == OptModelType.BOW1:
         save_size = 10000
     else:
-        save_size = 5000
+        save_size = 1000
     # load and pre process data (code specific)
     data = Data(par)
     load_dir = data.p_to_vec_main_dir + '/single_stock_news_to_vec/'
@@ -117,7 +117,8 @@ if __name__ == "__main__":
         # launch the vectorisation
         vectorise_in_batch(id_col=id_col, df=df, save_size=save_size, batch_size=batch_size, par=par, year=year)
     else:
-        par.enc.opt_model_type = OptModelType.OPT_13b
+        # par.enc.opt_model_type = OptModelType.OPT_13b
+        par.enc.opt_model_type = OptModelType.OPT_6b7
         # par.enc.opt_model_type = OptModelType.OPT_30b
 
     if args.bow==1:

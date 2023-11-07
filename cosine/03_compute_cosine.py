@@ -77,7 +77,9 @@ if __name__ == '__main__':
     save_dir = par.get_tf_idf_dir()
     days_kept = 60
 
-    index_list = load_all_index(par,reload=False)
+    index_list = load_all_index(par,reload=True)
+    for i in range(len(index_list)):
+        print(np.sort(pd.to_datetime(index_list[i]['date']).dt.year.unique()))
 
     # Load the previously saved TF-IDF model and the transformed corpus
     outp = save_dir + f'corpus_{par.enc.opt_model_type.name}'

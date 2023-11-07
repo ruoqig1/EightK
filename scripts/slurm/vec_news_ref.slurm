@@ -3,7 +3,7 @@
 #SBATCH --output=/home/adidishe/EightK/out/vec_news_ref_%a.out
 #SBATCH --error=/home/adidishe/EightK/out/vec_news_ref_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
-#SBATCH --array=9-9
+#SBATCH --array=0-26
 
 # Partition for the job:
 #SBATCH --partition=gpu-a100
@@ -14,7 +14,7 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=0-10:0:00
+#SBATCH --time=0-24:0:00
 
 #SBATCH --mail-user=antoine.didisheim@unimelb.edu.au
 #SBATCH --mail-type=FAIL

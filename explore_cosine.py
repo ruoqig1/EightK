@@ -26,6 +26,9 @@ if __name__ == '__main__':
     df['prn']=df['prn'].fillna(False)
     df = df.loc[df['prn']==False,:]
 
+    np.sort(df['form_date'].dt.year.unique())
+
+
     df = df.loc[df['news_prov']==1,:]  # keep only reutersz
 
 

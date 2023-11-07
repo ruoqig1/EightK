@@ -3,22 +3,51 @@ from scipy.stats import ttest_ind
 
 from parameters import *
 
-
-def plot_ev(m,s,c,do_cumulate = True,label_txt = 'News',t_val =2.58):
+def plot_ev_no_conf(m,do_cumulate = True,label_txt = 'News',t_val =2.58, ax =None,title = ''):
+    if do_cumulate:
+        m = m.cumsum()
+    color = Constant.COLOR_DUO
+    k = -1
+    if ax is None:
+        for x in m.columns:
+            k += 1
+            plt.plot(m.index, m[x].values, label=f'{label_txt} = {x}', color=color[k])
+        plt.tight_layout()
+        plt.legend()
+        plt.grid()
+        plt.tight_layout()
+    else:
+        for x in m.columns:
+            k += 1
+            ax.plot(m.index, m[x].values, label=f'{label_txt} = {x}', color=color[k])
+        ax.legend()
+        ax.grid()
+        ax.set_title(title)
+def plot_ev(m,s,c,do_cumulate = True,label_txt = 'News',t_val =2.58, ax =None,title = ''):
     if do_cumulate:
         m = m.cumsum()
         s = np.sqrt((s ** 2).cumsum())
     s = s / np.sqrt(c)
-    color = ['k', 'b']
+    color = Constant.COLOR_DUO
     k = -1
-    for x in m.columns:
-        k += 1
-        plt.plot(m.index, m[x].values, label=f'{label_txt} = {x}', color=color[k])
-        plt.fill_between(m.index, m[x].values - t_val * s[x].values, m[x].values + t_val * s[x].values, alpha=0.5, color=color[k])
-    plt.tight_layout()
-    plt.legend()
-    plt.grid()
-    plt.tight_layout()
+    if ax is None:
+        for x in m.columns:
+            k += 1
+            plt.plot(m.index, m[x].values, label=f'{label_txt} = {x}', color=color[k])
+            plt.fill_between(m.index, m[x].values - t_val * s[x].values, m[x].values + t_val * s[x].values, alpha=0.5, color=color[k])
+        plt.tight_layout()
+        plt.legend()
+        plt.grid()
+        plt.tight_layout()
+    else:
+        for x in m.columns:
+            k += 1
+            ax.plot(m.index, m[x].values, label=f'{label_txt} = {x}', color=color[k])
+            ax.fill_between(m.index, m[x].values - t_val * s[x].values, m[x].values + t_val * s[x].values, alpha=0.5, color=color[k])
+        ax.legend()
+        ax.grid()
+        ax.set_title(title)
+
 
 def apply_ttest(group,group_col ='no_rel',y_col ='abret_abs'):
     group1 = group[group[group_col] == 0][y_col]

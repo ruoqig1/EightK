@@ -1,86 +1,52 @@
-import numpy as np
 import pandas as pd
+import tensorflow as tf
 import os
-
+from vec_main import load_and_process_eight_k_legal_or_pressed
 import tqdm
 
 from parameters import *
-from data import *
-from utils_local.nlp_ticker import *
-from didipack.utils_didi.ridge import run_efficient_ridge
-from didipack.trainer.trainer_ridge import TrainerRidge
-# from didipack.trainer.trainer_logistic_elastic_net import TrainerLogisticElasticNet
-from didipack.trainer.trainer_logistic_elastic_net import TrainerLogisticElasticNet
-from didipack.trainer.train_splitter import get_start_dates, get_chunks, get_tasks_for_current_node
-import psutil
-from utils_local.general import *
-from utils_local.trainer_specials import *
-from experiments_params import get_main_experiments
-import tensorflow as tf
-from utils_local.plot import plot_ev
+from data import Data
 from matplotlib import pyplot as plt
+par = Params()
+data = Data(par)
+press_or_legal = 'legal'
+df =pd.read_pickle(data.p_dir+f'ss_count_{press_or_legal}.p')
+press =pd.read_pickle(data.p_dir+f'ss_count_press.p')
 
 
-if __name__ == '__main__':
-    par = get_main_experiments(5,train=False)
-    data = Data(par)
-    n = pd.read_pickle('data/p/news_per_stock_id.p')[['id','alert','timestamp','atime']]
+ind = df['items'].isin(Constant.LIST_ITEMS_TO_USE)
+df = df.loc[ind,:]
 
-    for index_model in range(1):
-        df = pd.read_pickle(f'res/model_tf_2/new_{index_model}.p')
-        par.load(f'res/model_tf_2/',f'/par_{index_model}.p')
-        print('MODEL,',par.train.l1_ratio,par.train.abny)
-        str_title = f'L1_ratio {par.train.l1_ratio}, Abny {par.train.abny}'
+ind = press['items'].isin(Constant.LIST_ITEMS_TO_USE)
+press = press.loc[ind,:]
+df.groupby('year')['len'].median().plot()
+plt.show()
+press.groupby('year')['len'].median().plot()
+plt.show()
 
-        df =df.merge(n)
+# df['len'].quantile(np.arange(0.01,1,0.01)).plot()
+# plt.show()
+#
+# PandasPlus.winzorize_series(press['len'],2).quantile(np.arange(0.01,1,0.01)).plot()
+# plt.show()
 
-        df['time_news'] = df['timestamp'].apply(lambda x: str(x).split('T')[1].split('.')[0])
-        df = df.loc[df['alert']==False,:]
+l = df.groupby(['year','items'])['len'].median().reset_index().pivot(columns='items',values='len',index='year')
+l_press = press.groupby(['year','items'])['len'].median().reset_index().pivot(columns='items',values='len',index='year')
+nb = df.groupby(['year','items'])['len'].count().reset_index().pivot(columns='items',values='len',index='year')
 
-        # Convert string columns to datetime.time format
-        df['time_news'] = pd.to_datetime(df['time_news']).dt.time
-        # df['atime'] = pd.to_datetime(df['atime']).dt.time
-        # Check if 'atime' is after 'time_news'
-        # df = df.loc[df['atime'] < df['time_news'],:]
+col = nb.mean()
+col = [x for x in col.index if col[x]>1000]
+l[col].plot()
+plt.show()
 
-
-
-        df = df.rename(columns={'ticker':'permno'})
-        df['year'] = df['date'].dt.year
-        df['y_pred']=(df['y_pred_prb']>df.groupby('year')['y_pred_prb'].transform('mean'))*1
-        df['accuracy'] = df['y_pred']==df['y_true']
-        print(df['accuracy'].mean())
-        df = df.groupby(['date','permno'])[['y_pred','y_true','y_pred_prb']].mean().reset_index()
-        df['year'] = df['date'].dt.year
-        df['y_pred']=(df['y_pred_prb']>df.groupby('year')['y_pred_prb'].transform('mean'))*1
+l_press[col].plot()
+plt.show()
 
 
-        ev = pd.read_pickle(data.p_dir + 'abn_ev_monly.p')
+nb_perc = nb/nb.iloc[8,:].values.reshape(1,-1)
+nb_perc[col].plot()
+plt.show()
 
-        df =df.merge(ev)
+nb[col].plot()
+plt.show()
 
-        ind_time = df['evttime'].between(-1,20)
-        ind = df['evttime'].between(-20,20)
-
-        df = df.merge(data.load_mkt_cap_yearly())
-        # ind = df['mcap_d']==5
-        group_col = 'y_pred'
-        start_ret ='abret'
-
-        m = df.loc[ind_time & ind, :].groupby(['evttime', group_col])[start_ret].mean().reset_index().pivot(columns=group_col, index='evttime', values=start_ret)
-        s = df.loc[ind_time & ind, :].groupby(['evttime', group_col])['sigma_ra'].mean().reset_index().pivot(columns=group_col, index='evttime', values='sigma_ra')
-        c = df.loc[ind_time & ind, :].groupby(['evttime', group_col])[start_ret].count().reset_index().pivot(columns=group_col, index='evttime', values=start_ret)
-        plot_ev(m, s, c, do_cumulate=True, label_txt='Pred')
-        # plt.title(str_title)
-        plt.tight_layout()
-        plt.show()
-
-
-        # t=df.groupby(['year'])['y_pred_prb'].rank(pct=True)
-        #
-        # df['buy'] =t>0.9
-        # df['sell'] =t<0.1
-        # df['pos'] = 1*(t>0.9) -1*(t<0.1)
-        # start_ret ='ret'
-        # df.groupby(['year','pos'])[start_ret].mean().reset_index().pivot(columns='pos',index='year',values=start_ret).plot()
-        # plt.show()

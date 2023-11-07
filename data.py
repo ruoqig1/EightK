@@ -1,7 +1,6 @@
 import os
 import time
 import datetime
-
 import pyperclip
 import yfinance as yf
 
@@ -13,7 +12,7 @@ import glob
 import gzip
 
 import data
-from parameters import Params, Constant
+from parameters import *
 import html2text
 import sys
 import re
@@ -679,6 +678,7 @@ class Data:
             df = df.merge(rav, how='left')
             df['news0'] = df['news0'].fillna(0.0)
             df.to_pickle(self.p_dir+'load_return_for_nlp_on_eightk_new.p')
+            print('saved',self.p_dir+'load_return_for_nlp_on_eightk_new.p')
         else:
             df = pd.read_pickle(self.p_dir+'load_return_for_nlp_on_eightk_new.p')
         return df
@@ -698,6 +698,7 @@ class Data:
 
     def load_main_cosine(self):
         save_dir = self.par.get_cosine_dir(temp=False)
+        save_dir = Constant.MAIN_DIR+'/data/cosine/opt_model_typeOptModelType.BOW1news_sourceNewsSource.NEWS_THIRDnb_chunks100save_chunks_size500chunk_to_run_id1/'
         df = pd.read_pickle(save_dir + 'df.p')
         return df
     def load_crsp_low_shares(self,reload = False):
@@ -736,6 +737,43 @@ class Data:
             df = pd.read_pickle(self.p_dir + 'prn.p')
         return df
 
+    def load_complement_id_for_tfidf_records(self,reload=False):
+        if reload:
+            par = Params()
+            par.enc.opt_model_type = OptModelType.BOW1
+            par.enc.news_source = NewsSource.NEWS_THIRD
+            load_dir = par.get_cosine_dir(temp=False)
+            df = pd.read_pickle(load_dir + 'df.p')
+            df['permno'].unique().shape
+            prn = self.load_prn().rename(columns={'id': 'news_id'})
+            df = df.merge(prn, how='left')
+            df['prn'] = df['prn'].fillna(False)
+            # drop the press release from this
+            df = df.loc[df['prn'] == False, :]
+            df = df.merge(df.groupby(['permno', 'news_prov'])['value'].median().reset_index().rename(columns={'value': 'm_cosine'}))
+            df = df.rename(columns={'value': 'cosine'})
+            # df['permno'] = df['permno'].astype(int)
+            df['prn'] *= 1
+            df = df.groupby('news_id')[['cosine', 'm_cosine', 'news_prov', 'prn']].max().reset_index()
+            df.to_pickle(self.p_dir+'load_complement_id_for_tfidf_records.p')
+        else:
+            df = pd.read_pickle(self.p_dir+'load_complement_id_for_tfidf_records.p')[['news_id','cosine', 'm_cosine']]
+        return df
+
+    def load_rav_coverage(self,reload=False):
+        if reload:
+            rav = self.load_ravenpack_all()
+            rav['pr_r'] = rav['news_type'] == 'PRESS-RELEASE'
+            rav['pr_r'] = rav['pr_r'].map({True: 'press', False: 'article'})
+            temp = rav.groupby(['rdate', 'permno', 'pr_r'])['relevance'].max().reset_index()
+            temp = temp.pivot(columns='pr_r', index=['rdate', 'permno'], values='relevance').fillna(0.0).reset_index()
+            temp['permno'] = temp['permno'].astype(int)
+            temp = temp.rename(columns={'rdate': 'date'})
+            temp.to_pickle(self.p_dir+'load_rav_coverage.p')
+        else:
+            temp = pd.read_pickle(self.p_dir+'load_rav_coverage.p')
+        return temp
+
 
 if __name__ == "__main__":
     try:
@@ -746,7 +784,6 @@ if __name__ == "__main__":
         grid_id = -2
 
     self = Data(Params())
-    reload = True
-
+    # df = self.load_return_for_nlp_on_eightk(True)
 
 

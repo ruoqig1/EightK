@@ -7,7 +7,7 @@ from parameters import *
 from data import *
 from utils_local.nlp_ticker import *
 from itertools import chain
-from utils_local.plot import plot_ev
+from utils_local.plot import plot_ev, plot_ev_no_conf
 from matplotlib import pyplot as plt
 
 
@@ -22,6 +22,9 @@ if __name__ == "__main__":
     use_constant_in_abret = False
     save_dir = Constant.EMB_PAPER+'ss/'
     os.makedirs(save_dir, exist_ok=True)
+
+
+    rav = data.load_ravenpack_all()
 
 
     df = data.load_some_relevance_icf()
@@ -56,8 +59,11 @@ if __name__ == "__main__":
     df = df.merge(sp, how='left')
 
     df['in_snp'] = (((df['date'] <= df['ending']) & (df['date'] >= df['start'])) * 1).fillna(0.0)
-    df['big'] = df['in_snp'].replace({1:'snp',0:'non_snp'})
-    sizes =df['big'].unique()
+    # df['big'] = df['in_snp'].replace({1:'snp',0:'non_snp'})
+    # sizes =df['big'].unique()
+
+    t = df.groupby(['date', 'permno'])['abs_abret'].transform('mean')
+    df['abs_abret_norm'] = df['abs_abret'] - t
 
 
     # df.groupby('big')['mcap_d'].unique()
@@ -68,8 +74,8 @@ if __name__ == "__main__":
             ind = (df['big'] == big) & (df['evttime'].between(-20, 20))  # & (df['mcap_d']>2)
         else:
             ind = (df['big'] == big) & (df['evttime'].between(-10, 10))  # & (df['mcap_d']>2)
-        m = df.loc[ind,:].groupby(['evttime','news'])['abs_abret'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret')
-        s= df.loc[ind,:].groupby(['evttime','news'])['abs_abret'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret')
+        m = df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
+        s= df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
         # s= df.loc[ind,:].groupby(['evttime','news'])['sigma_to_avg'].mean().reset_index().pivot(columns='news',index='evttime',values='sigma_to_avg')**(1/2)
         c= df.loc[ind,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
         plot_ev(m, s, c, do_cumulate=False, label_txt='News')
@@ -79,3 +85,35 @@ if __name__ == "__main__":
         plt.title(f'{big}')
         plt.tight_layout()
         plt.show()
+
+
+
+    # df.groupby('big')['mcap_d'].unique()
+    df['big']= df['mcap_d']
+    sizes = np.sort(df['big'].unique())
+    for big in sizes:
+        if big ==10:
+            plt.figure(figsize=[6.4*2,4.8])
+            ind = (df['big'] == big) & (df['evttime'].between(-20, 20))  # & (df['mcap_d']>2)
+        else:
+            ind = (df['big'] == big) & (df['evttime'].between(-10, 10))  # & (df['mcap_d']>2)
+        m = df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
+        s= df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
+        # s= df.loc[ind,:].groupby(['evttime','news'])['sigma_to_avg'].mean().reset_index().pivot(columns='news',index='evttime',values='sigma_to_avg')**(1/2)
+        c= df.loc[ind,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
+        plot_ev(m, s, c, do_cumulate=False, label_txt='News')
+        plt.tight_layout()
+        plt.savefig(save_dir+f'q{big}.png')
+        plt.tight_layout()
+        plt.title(f'{big}')
+        plt.tight_layout()
+        plt.show()
+
+    plt.figure(figsize=[6.4 * 2, 4.8])
+    m = df.loc[:,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
+    s= df.loc[:,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
+    c= df.loc[:,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
+    plot_ev_no_conf(m, do_cumulate=False, label_txt='News')
+    plt.savefig(save_dir+'intro_plot.png')
+    # plot_ev(m, s, c, do_cumulate=False, label_txt='News')
+    plt.show()

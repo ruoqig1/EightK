@@ -20,6 +20,7 @@ if __name__ == "__main__":
     par = Params()
     data = Data(par)
     use_reuters_news = False
+    use_rav_cov_news_v2 = False
     use_constant_in_abret = False
     winsorise_ret = -1
     do_cumulate = True
@@ -61,6 +62,11 @@ if __name__ == "__main__":
         news = news.merge(data.load_crsp_daily()[['permno','ticker','date']])
         df = df.drop(columns='news0').merge(news[['date','permno','news0']],how='left')
         df['news0'] = df['news0'].fillna(value = False)
+
+    if use_rav_cov_news_v2:
+        rav = data.load_rav_coverage(False)
+        df = df.merge(rav,how='left').fillna(0.0)
+        df['news0'] = 1.0*(df['article']>0)
 
     if use_relase:
         df['news0'] = df['release']
@@ -139,6 +145,23 @@ if __name__ == "__main__":
     plt.show()
 
 
+    # ev = data.load_some_relevance_icf()[['adate','permno','items']].rename(columns={'adate':'date'})
+    # temp = df.merge(ev)
+    #
+    # for items in Constant.LIST_ITEMS_TO_USE:
+    #     ind_items = temp['items']==items
+    #     m = temp.loc[ind_items & ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].mean().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
+    #     s = temp.loc[ind_items & ind_time & size_ind, :].groupby(['evttime', 'news0'])[sigma_col].mean().reset_index().pivot(columns='news0', index='evttime', values=sigma_col)
+    #     c = temp.loc[ind_items & ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].count().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
+    #     plot_ev(m, s, c, do_cumulate=True, label_txt='PR' if use_relase else 'News')
+    #     plt.tight_layout()
+    #
+    #     plt.title(f'LONG SHORT EW {items}')
+    #     plt.tight_layout()
+    #     plt.show()
+    #
+    # breakpoint()
+
     # #LONG SHORT VW CLEAN
     print(df.shape)
 
@@ -171,16 +194,16 @@ if __name__ == "__main__":
     df
 
     # df.loc[:, 'abs_abret'] = PandasPlus.winzorize_series(df.loc[:, 'abs_abret'], 1)
-    df['big'] = df['mcap_d']==10
-    group_col = 'news0'
-    for n in [True,False]:
-        ind = df['big']==n
-        m = df.loc[ind_time & ind, :].groupby(['evttime', group_col])['abs_abret'].mean().reset_index().pivot(columns=group_col, index='evttime', values='abs_abret')
-        s = df.loc[ind_time & ind, :].groupby(['evttime', group_col])['sigma_abs_ra'].mean().reset_index().pivot(columns=group_col, index='evttime', values='sigma_abs_ra')
-        c = df.loc[ind_time & ind, :].groupby(['evttime', group_col])[start_ret].count().reset_index().pivot(columns=group_col, index='evttime', values=start_ret)
-        plot_ev(m, s, c, do_cumulate=False, label_txt='News')
-        plt.tight_layout()
-        plt.savefig(save_dir+f'news_abret.png')
-        plt.title(f'Big Firm {n}')
-        plt.tight_layout()
-        plt.show()
+    # df['big'] = df['mcap_d']==10
+    # group_col = 'news0'
+    # for n in [True,False]:
+    #     ind = df['big']==n
+    #     m = df.loc[ind_time & ind, :].groupby(['evttime', group_col])['abs_abret'].mean().reset_index().pivot(columns=group_col, index='evttime', values='abs_abret')
+    #     s = df.loc[ind_time & ind, :].groupby(['evttime', group_col])['sigma_abs_ra'].mean().reset_index().pivot(columns=group_col, index='evttime', values='sigma_abs_ra')
+    #     c = df.loc[ind_time & ind, :].groupby(['evttime', group_col])[start_ret].count().reset_index().pivot(columns=group_col, index='evttime', values=start_ret)
+    #     plot_ev(m, s, c, do_cumulate=False, label_txt='News')
+    #     plt.tight_layout()
+    #     plt.savefig(save_dir+f'news_abret.png')
+    #     plt.title(f'Big Firm {n}')
+    #     plt.tight_layout()
+    #     plt.show()

@@ -46,7 +46,6 @@ if __name__ == '__main__':
     # Assuming `documents_bow` is your list of BoW dictionaries for the documents
     documents_bow = [json.loads(bow_str[0]) for bow_str in tqdm.tqdm(documents_bow, 'decoding the bow')]
 
-
     # 1. Convert your BoW dictionaries to Gensim's format
     # This creates a mapping of word -> id, and will be used to convert your dictionaries
     dictionary = corpora.Dictionary()

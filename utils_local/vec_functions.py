@@ -1,3 +1,4 @@
+import gc
 import os
 
 import pandas as pd
@@ -51,6 +52,7 @@ def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:
 
     res = df[id_col].copy()
     res['vec_last'] = np.nan
+    res['vec_mean'] = np.nan
 
     res = res.set_index(id_col)
     df = df.set_index(id_col).sort_index()
@@ -74,11 +76,13 @@ def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:
                         txt_list.append(' ')
                     else:
                         txt_list.append(txt_list_raw[i].encode('utf-8', 'ignore').decode('utf-8'))
-                last_token_hidden_stage, _ = model.get_hidden_states_para(texts=txt_list)
+                last_token_hidden_stage, mean_hidden_stage = model.get_hidden_states_para(texts=txt_list)
                 res.loc[ind, 'vec_last'] = pd.Series(last_token_hidden_stage, index=ind)
+                res.loc[ind, 'vec_mean'] = pd.Series(mean_hidden_stage, index=ind)
             res.dropna().to_pickle(save_dest)
+            print(res.dropna().head())
             res = res.loc[pd.isna(res.values)]
-
+            gc.collect()
 # python vec_main.py 26 --legal=0 --eight=0 --news=1 --ref=1 --bow=1
 
 if __name__ == "__main__":
