@@ -82,6 +82,14 @@ def get_experiment_for_paper_draft_in_oct_2023(id_comb:int,train=True) -> Params
     par.update_param_grid(grid, id_comb=id_comb)
     return par
 
+def get_params_for_tfidf():
+    par = Params()
+    par.enc.opt_model_type = OptModelType.BOW1
+    par.tfidf.no_above = 1
+    par.tfidf.no_below = .99
+    par.tfidf.do_some_filtering = False
+    par.tfidf.vocabulary_list = VocabularySetTfIdf.REUTERS_ONLY
+    return par
 
 def predict_with_news_based_on_some_filters(id_comb:int,train=True,train_gpu = False) -> Params:
     print('START WORKING ON ',id_comb,flush=True)

@@ -1,5 +1,5 @@
 import tqdm
-
+import seaborn as sns
 from data import Data
 from utils_local.general import *
 from matplotlib import pyplot as plt
@@ -34,16 +34,12 @@ if __name__ == "__main__":
     sigma_col = 'sigma_ret_train' if start_ret == 'ret' else 'sigma_ra'
 
     if use_relase:
-        save_dir = 'res/release/'
+        save_dir = Constant.EMB_PAPER + 'release/'
     else:
-        save_dir = 'res/news/'
+        save_dir = Constant.EMB_PAPER + 'news/'
     os.makedirs(save_dir,exist_ok=True)
-    # load models
-    # load_dir = 'res/temp_new/'
-    load_dir = 'res/model_final_res/'
-    # load_dir = 'res/model_final_long/'
-    os.listdir(load_dir)
-    df = pd.read_pickle(load_dir + f'new_{model_index}.p')
+    df, par = data.load_ml_forecast_draft_1()
+
     print(df.groupby(df['date'].dt.year)['permno'].count())
     if use_relase:
         df = df.merge(data.get_press_release_bool_per_event())
@@ -53,15 +49,6 @@ if __name__ == "__main__":
     df= df.groupby(['date','permno','news0','release'])['pred_prb','abret'].mean().reset_index()
     # df['pred']  = np.sign(df['pred_prb']-0.5)
     df['pred']  = np.sign(df['pred_prb']-df['pred_prb'].mean())
-
-    if use_reuters_news:
-        news = pd.read_pickle('data/cleaned/some_news/ref.p')
-        news = news.loc[news['alert']==False,:]
-        news['date'] = pd.to_datetime(news['timestamp'].apply(lambda x: x.split('T')[0]))
-        news['news0'] = True
-        news = news.merge(data.load_crsp_daily()[['permno','ticker','date']])
-        df = df.drop(columns='news0').merge(news[['date','permno','news0']],how='left')
-        df['news0'] = df['news0'].fillna(value = False)
 
     if use_rav_cov_news_v2:
         rav = data.load_rav_coverage_split_by(False)
@@ -74,28 +61,14 @@ if __name__ == "__main__":
 
     df['acc'] = df['pred']==np.sign(df['abret'])
 
-
-    print(df.shape)
-    par.load(load_dir,f'/par_{model_index}.p')
     print(par.train.abny,par.train.l1_ratio)
+
     # acc = df.groupby('items')['acc'].aggregate(['mean','count']).sort_values('mean')
     # item_to_keep = acc.loc[acc['count']>50,:].index
 
     # df = df.loc[~df['items'].isin([5.06,5.01,4.02]),:]
     # df = df.loc[df['items'].isin(item_to_keep),:]
-
-
-    if nb_factors == 1:
-        ev = pd.read_pickle(data.p_dir+'abn_ev_monly.p')
-    elif nb_factors == 6:
-        ev = pd.read_pickle(data.p_dir+'abn_ev6_monly.p')
-    elif nb_factors == 3:
-        ev = pd.read_pickle(data.p_dir+'abn_ev3_monly.p')
-    elif nb_factors == -1:
-        # use volume
-        ev = pd.read_pickle(data.p_dir + 'trun_ev_monly.p')
-        ev['abs_abret'] = ev['abret']  # just doing this simplificaiton so the code run similarly for volume
-
+    ev = data.load_abn_return(model=nb_factors)
 
     if winsorise_ret>0:
         for model_index in tqdm.tqdm(ev['evttime'].unique(), 'winsorize'):
@@ -126,8 +99,8 @@ if __name__ == "__main__":
     df['pred_rnd'] = np.sign(np.random.normal(size=df['pred'].shape))
     df['pred_rnd_2'] = np.sign(np.random.normal(size=df['pred'].shape)+0.5)
 
+
     n_list = [False,True] if use_relase else [0,1]
-    do_cummulate  = nb_factors >0
     for n in n_list:
         ind = df['news0']==n
         if n == -1:
@@ -135,7 +108,7 @@ if __name__ == "__main__":
         m = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].mean().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
         s = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[sigma_col].mean().reset_index().pivot(columns=pred_col, index='evttime', values=sigma_col)
         c = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].count().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
-        plot_ev(m, s, c, do_cumulate=do_cummulate, label_txt='Prediciton')
+        plot_ev(m, s, c, do_cumulate=True, label_txt='Prediciton')
         plt.tight_layout()
         plt.savefig(save_dir+f'car_n{n}.png')
         plt.show()
@@ -146,14 +119,12 @@ if __name__ == "__main__":
     m = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].mean().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
     s = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])[sigma_col].mean().reset_index().pivot(columns='news0', index='evttime', values=sigma_col)
     c = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].count().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
-    plot_ev(m,s,c,do_cumulate = do_cummulate,label_txt = 'PR' if use_relase else 'News')
+    plot_ev(m,s,c,do_cumulate = True,label_txt = 'PR' if use_relase else 'News')
     plt.tight_layout()
     plt.savefig(save_dir+f'ls_ew.png')
     plt.title('LONG SHORT EW')
     plt.tight_layout()
     plt.show()
-
-
 
     # #LONG SHORT VW CLEAN
     print(df.shape)
@@ -169,13 +140,17 @@ if __name__ == "__main__":
     m = long_short[1]-long_short[0]
     s = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])[sigma_col].mean().reset_index().pivot(columns='news0', index='evttime', values=sigma_col)
     c = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['w_ret2'].count().reset_index().pivot(columns='news0', index='evttime', values='w_ret2')
-    plot_ev(m,s,c,do_cumulate = do_cummulate,label_txt = 'PR' if use_relase else 'News')
+    plot_ev(m,s,c,do_cumulate = True,label_txt = 'PR' if use_relase else 'News')
     plt.tight_layout()
     plt.savefig(save_dir+f'ls_vw.png')
     plt.title('LONG SHORT VW')
     plt.tight_layout()
     plt.show()
 
+
+
+    ###### argue that the measure is indeed uncorelated to
+    df.loc[df['evttime']==0,['pred','pred_prb']]
 
 
 

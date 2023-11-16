@@ -42,7 +42,6 @@ def load_and_process_eight_k_legal_or_pressed(par, args, press_or_legal ='legal'
     df = df.merge(ev,how='inner')
     print('Droped',df.shape[0]/sh)
     print('Left',df.shape[0])
-
     if press_or_legal=='legal':
         df['item'] = pd.to_numeric(df['item'],errors='coerce')
         ind = df['item'].isin(Constant.LIST_ITEMS_TO_USE)
@@ -62,6 +61,23 @@ def load_and_process_eight_k_legal_or_pressed(par, args, press_or_legal ='legal'
     return id_col,save_size,batch_size,year,df
 
 
+def load_and_process_wsj(par, args):
+    save_size = 1000
+    batch_size = 2
+    year = np.arange(1996,2023)[args.a]
+    # load and pre process data (code specific)
+    data = Data(par)
+    if par.enc.news_source == NewsSource.WSJ_ONE_PER_STOCK:
+        df = data.load_wsj_one_per_tickers().reset_index(drop=True)
+        df = df.drop_duplicates()
+        df['ids'] = df.index
+        ind = df['date'].dt.year==year
+        df = df.loc[ind,:]
+        id_col = ['ids','date','ticker']
+        df['txt'] = df['headline'] + ' \n \n ' + df['body']
+        df = df.drop(columns=['body','headline'])
+    return id_col,save_size,batch_size,year,df
+
 def drop_already_process_text_from_df(df,par):
     save_dir = par.get_vec_process_dir()
     id_processed = []
@@ -77,7 +93,7 @@ def drop_already_process_text_from_df(df,par):
     return df, max_id_processed
 
 def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
-    batch_size = 1
+    batch_size = 3
     if par.enc.opt_model_type == OptModelType.BOW1:
         save_size = 10000
     else:
@@ -141,6 +157,13 @@ if __name__ == "__main__":
             # launch the vectorisation
             vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
 
+    if args.wsj==1:
+        if args.one_per_news==1:
+            print('START WSJ, ONE PER NEWS (exploded)',flush=True)
+            par.enc.news_source = NewsSource.WSJ_ONE_PER_STOCK
+            id_col, save_size, batch_size, year, df = load_and_process_wsj(par, args)
+            # launch the vectorisation
+            vectorise_in_batch(id_col =id_col, df=df, save_size=save_size, batch_size=batch_size, par =par, year=year)
 
     if args.news==1:
         if args.ref==1:

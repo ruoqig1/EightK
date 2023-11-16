@@ -17,13 +17,14 @@ from gensim.corpora import Dictionary, MmCorpus
 from gensim.models import TfidfModel
 
 from gensim import similarities
+from experiments_params import get_params_for_tfidf
 
 
 if __name__ == '__main__':
-    par = Params()
+    par = get_params_for_tfidf()
     data = Data(par)
     df = pd.DataFrame()
-    par.enc.opt_model_type = OptModelType.BOW1
+
     save_dir = par.get_tf_idf_dir()
 
     outp = save_dir +f'corpus_{par.enc.opt_model_type.name}'
@@ -39,7 +40,7 @@ if __name__ == '__main__':
 
     tfidf.save(outp + '.tfidf_model')
     MmCorpus.serialize(outp + '_tfidf.mm', tfidf[mm], progress_cnt=10000)
-    print(f'save model to {outp}.tfidf_model')
+    print(f'save model to {outp}.tfidf_model',flush=True)
 #
 
 

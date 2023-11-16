@@ -1,11 +1,11 @@
 #!/bin/bash -l
 #SBATCH --job-name="deb_gpu"
-#SBATCH --output=/home/adidishe/EightK/out/deb_gpu.out
-#SBATCH --error=/home/adidishe/EightK/out/deb_gpu.err
+#SBATCH --output=/home/adidishe/EightK/out/long_gpu.out
+#SBATCH --error=/home/adidishe/EightK/out/long_gpu.err
 #SBATCH --chdir=/home/adidishe/EightK
 
 # Partition for the job:
-#SBATCH --partition=gpu-a100-short
+#SBATCH --partition=gpu-a100
 #SBATCH --gres=gpu:1
 #SBATCH --account="punim2039"
 

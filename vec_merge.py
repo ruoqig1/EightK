@@ -96,8 +96,8 @@ if __name__ == "__main__":
         par = Params()
         data = Data(par)
         par.enc.opt_model_type = OptModelType.BOW1
-        # for news_source in [NewsSource.EIGHT_PRESS]:
-        for news_source in [NewsSource.EIGHT_PRESS,NewsSource.NEWS_REF, NewsSource.NEWS_THIRD]:
+        for news_source in [NewsSource.WSJ_ONE_PER_STOCK]:
+        # for news_source in [NewsSource.EIGHT_PRESS,NewsSource.NEWS_REF, NewsSource.NEWS_THIRD, NewsSource.WSJ_ONE_PER_STOCK]:
             par.enc.news_source = news_source
             df = load_all_enc(par)
             save_dest = par.get_vec_process_dir(merged_bow=True)

@@ -19,30 +19,27 @@ if __name__ == "__main__":
     args = didi.parse()
     par=Params()
     data = Data(par)
-    use_constant_in_abret = False
-    save_dir = Constant.EMB_PAPER+'ss/'
+    nb_factors = -1
+    if nb_factors == 1:
+        save_dir = Constant.EMB_PAPER+'ss/'
+    else:
+        save_dir = Constant.EMB_PAPER+'temp/'
     os.makedirs(save_dir, exist_ok=True)
 
-
     rav = data.load_ravenpack_all()
-
 
     df = data.load_some_relevance_icf()
     df['news'] = df['no_rel']==0
     df=df.rename(columns={'adate':'date'})
-    # df = df.loc[df['ddate'].dt.year>=2012,:]
     df['big'] = df['mcap_d']==10
     df = df.loc[df['items'].isin(Constant.LIST_ITEMS_TO_USE),:]
 
-    if use_constant_in_abret:
-        ev = pd.read_pickle(data.p_dir+'abn_ev_m.p')
-    else:
-        ev = pd.read_pickle(data.p_dir+'abn_ev_monly.p')
 
+    ev =data.load_abn_return(model=nb_factors)
     df = df.merge(ev)
+
+
     df = df[['date','permno','abs_abret','sigma_abs_ra','sigma_ra','news','big','mcap_d','evttime']].drop_duplicates()
-    df
-    df['sigma_to_avg'] = df['sigma_abs_ra']**2
     df['big'] = 1*(df['mcap_d']>=10) + 1*(df['mcap_d']>3)+ 1*(df['mcap_d']>6)
     df['big'] = 'micro'
     df.loc[df['mcap_d']<=10,'big'] = 'Mega'
@@ -63,7 +60,11 @@ if __name__ == "__main__":
     # sizes =df['big'].unique()
 
     t = df.groupby(['date', 'permno'])['abs_abret'].transform('mean')
-    df['abs_abret_norm'] = df['abs_abret'] - t
+
+    if nb_factors>0:
+        df['abs_abret_norm'] = df['abs_abret'] - t
+    else:
+        df['abs_abret_norm'] = df['abs_abret']
 
 
     # df.groupby('big')['mcap_d'].unique()
@@ -76,7 +77,6 @@ if __name__ == "__main__":
             ind = (df['big'] == big) & (df['evttime'].between(-10, 10))  # & (df['mcap_d']>2)
         m = df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
         s= df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
-        # s= df.loc[ind,:].groupby(['evttime','news'])['sigma_to_avg'].mean().reset_index().pivot(columns='news',index='evttime',values='sigma_to_avg')**(1/2)
         c= df.loc[ind,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
         plot_ev(m, s, c, do_cumulate=False, label_txt='News')
         plt.tight_layout()
@@ -99,7 +99,6 @@ if __name__ == "__main__":
             ind = (df['big'] == big) & (df['evttime'].between(-10, 10))  # & (df['mcap_d']>2)
         m = df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
         s= df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
-        # s= df.loc[ind,:].groupby(['evttime','news'])['sigma_to_avg'].mean().reset_index().pivot(columns='news',index='evttime',values='sigma_to_avg')**(1/2)
         c= df.loc[ind,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
         plot_ev(m, s, c, do_cumulate=False, label_txt='News')
         plt.tight_layout()

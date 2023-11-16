@@ -26,6 +26,7 @@ class NewsSource(Enum):
     NEWS_REF_ON_EIGHT_K ='NEWS_REF_ON_EIGHT_K'
     NEWS_THIRD ='NEWS_THIRD' # third party news
     NEWS_SINGLE ='NEWS_SINGLE' # both third party and ref news, attached to a single stock
+    WSJ_ONE_PER_STOCK = 'WSJ_ONE_PER_STOCK'
 
 class PredModel(Enum):
     RIDGE = 'RIDGE'
@@ -36,6 +37,11 @@ class Normalisation(Enum):
     RANK ='RANK'
     ZSCORE ='ZSCORE'
     MINMAX ='MINMAX'
+
+class VocabularySetTfIdf(Enum):
+    ALL = 'All'
+    REUTERS_ONLY = 'reuters_only'
+    WSJ_ONLY = 'wsj_only'
 
 
 class OptModelType(Enum):
@@ -77,7 +83,7 @@ class Constant:
     COLOR_DUO = ['k', 'b']
     FRED_API = 'cfc526395a5631650ec0b7ee96b149f4'
 
-    DRAFT_1_CSV_PATH = 'draft_1/csv/'
+    DRAFT_1_CSV_PATH = '/Users/adidisheim/Dropbox/AB-AD_Share/052-EMB/datasets/draft_1/csv/'
 
     DROP_RES_DIR = '/Users/adidisheim/Dropbox/Apps/Overleaf/EightKEarlyAnalysis/'
 
@@ -132,6 +138,531 @@ class Constant:
 
     IS_VM = socket.gethostname()=='rdl-7enbvm.desktop.cloud.unimelb.edu.au'
 
+class BryanGroups:
+    accounting_size = ['assets','sales','book_equity','net_income','enterprise_value']
+    growth_percentage = [
+        'at_gr1',
+        'sale_gr1',
+        'ca_gr1',
+        'nca_gr1',
+        'lt_gr1',
+        'cl_gr1',
+        'ncl_gr1',
+        'be_gr1',
+        'pstk_gr1',
+        'debt_gr1',
+        'cogs_gr1',
+        'sga_gr1',
+        'opex_gr1',
+        'at_gr3',
+        'nca_gr3',
+        'lt_gr3',
+        'cl_gr3',
+        'ncl_gr3',
+        'be_gr3',
+        'pstk_gr3',
+        'debt_gr3',
+        'cogs_gr3',
+        'sga_gr3',
+        'opex_gr3'
+    ]
+    growth_changed_scale_by_total_asset = [
+        'gp_gr3a',
+        'ocf_gr3a',
+        'cash_gr3a',
+        'inv_gr3a',
+        'rec_gr3a',
+        'ppeg_gr3a',
+        'lti_gr3a',
+        'intan_gr3a',
+        'debtst_gr3a',
+        'ap_gr3a',
+        'txp_gr3a',
+        'debtlt_gr3a',
+        'txditc_gr3a',
+        'coa_gr3a',
+        'cowc_gr3a',
+        'ncoa_gr3a',
+        'nncoa_gr3a',
+        'oa_gr3a',
+        'ol_gr3a',
+        'ncoa_gr3a',
+        'fna_gr3a',
+        'fnl_gr3a',
+        'nfna_gr3a',
+        'ebitda_gr3a',
+        'ope_gr3a',
+        'ni_gr3a',
+        'dp_gr3a',
+        'fcf_gr3a',
+        'nwc_gr3a',
+        'nix_gr3a',
+        'eqnetis_gr3a',
+        'dltnetis_gr3a',
+        'dstnetis_gr3a',
+        'dbnetis_gr3a',
+        'netis_gr3a',
+        'fincf_gr3a',
+        'eqnpo_gr3a',
+        'tax_gr3a',
+        'div_gr3a',
+        'eqbb_gr3a',
+        'eqis_gr3a',
+        'eqpo_gr3a',
+        'capx_gr3a',
+    ]
+
+    investment = [
+        'capx_at',
+        'rd_at'
+    ]
+
+    non_recurring_items = [
+        'spi_at',
+        'xido_at',
+        'nri_at'
+    ]
+
+    profit_margin = [
+        'gp_sale',
+        'ebitda_sale',
+        'ebit_sale',
+        'pi_sale',
+        'ni_sale',
+        'nix_sale',
+        'fcf_sale',
+        'ocf_sale'
+    ]
+
+    return_on_assets = [
+        'gp_at',
+        'ebit_at',
+        'ebitda_at',
+        'fi_at',
+        'cop_at'
+    ]
+
+    return_on_book_equity = [
+        'ope_be',
+        'ni_be',
+        'nix_be',
+        'ocf_be',
+        'fcf_be'
+    ]
+
+    return_on_invested_capital = [
+        'gp_bev',
+        'ebitda_bev',
+        'ebit_bev',
+        'fi_bev',
+        'cop_bev'
+    ]
+
+    return_on_physical_capital = [
+        'gp_ppen',
+        'ebitda_ppen',
+        'fcf_ppen'
+    ]
+
+    issuance = [
+        'fincf_at',
+        'netis_at',
+        'eqnetis_at',
+        'eqis_at',
+        'dbnetis_at',
+        'dltnetis_at',
+        'dstnetis_at'
+    ]
+
+    equity_payout = [
+        'eqnpo_at',
+        'eqbb_at',
+        'div_at'
+    ]
+
+    accruals = [
+        'oaccruals_at',
+        'oaccruals_ni',
+        'taccruals_at',
+        'taccruals_ni',
+        'noa_at'
+    ]
+
+    capitalisation_leverage_ratio = [
+        'be_bev',
+        'debt_bev',
+        'cash_bev',
+        'pstk_bev',
+        'debtlt_bev',
+        'debtst_bev',
+        'debt_mev',
+        'pstk_mev',
+        'debtlt_mev',
+        'debtst_mev',
+    ]
+
+    finanical_soundness_ratios = [
+        'int_debt',
+        'int_debtlt',
+        'ebitda_debt',
+        'profit_cl',
+        'ocf_cl',
+        'ocf_debt',
+        'cash_lt',
+        'inv_act',
+        'rec_act',
+        'debtst_debt',
+        'cl_lt',
+        'debtlt_debt',
+        'opex_at',
+        'fcf_ocf',
+        'lt_ppen',
+        'debtlt_be',
+        'nwc_at',
+    ]
+
+    solvency_ratios = [
+        'debt_at',
+        'debt_be',
+        'ebit_int'
+    ]
+
+    liquidity_ratios = [
+        'inv_days',
+        'rec_days',
+        'ap_days',
+        'cash_conversion',
+        'cash_cl',
+        'caliq_cl',
+        'ca_cl',
+    ]
+
+    activity_efficency_ratios =[
+        'inv_turnover',
+        'at_turnover',
+        'rec_turnover',
+        'ap_turnover',
+        'adv_sale',
+        'staff_sale',
+        'sale_bev',
+        'rd_sale',
+        'sale_be',
+        'div_ni',
+        'sale_nwc',
+        'tax_pi'
+    ]
+
+    balance_sheet_fundamental_to_market_equity = [
+        'be_me',
+        'at_me',
+        'cash_me'
+    ]
+
+    income_fundamentals_to_market_equity = [
+        'gp_me',
+        'ebitda_me',
+        'ebit_me',
+        'ope_me',
+        'ni_me',
+        'sale_me',
+        'ocf_me',
+        'fcf_me',
+        'nix_me',
+        'cop_me',
+        'rd_me'
+    ]
+    balance_sheet_fundamental_to_entreprise_value = [
+        'be_mev',
+        'at_mev',
+        'cash_mev',
+        'bev_mev',
+        'ppen_mev'
+    ]
+
+    equity_payout_issuance_to_market_equity = [
+        'div_me',
+        'eqbb_me',
+        'eqis_me',
+        'eqpo_me',
+        'eqnpo_me',
+        'eqnetis_me'
+    ]
+
+    debt_issuance_to_market_entreprise_value = [
+        'dltnetis_mev',
+        'dstnetis_mev',
+        'dbnetis_mev'
+    ]
+
+    firm_payout_issuance_to_market_enterprise_value = [
+        'netis_mev'
+    ]
+
+    income_fundamentals_to_market_entreprise_value = [
+        'gp_mev',
+        'ebitda_mev',
+        'ebit_mev',
+        'sale_mev',
+        'ocf_mev',
+        'fcf_mev',
+        'cop_mev',
+        'fincf_mev'
+    ]
+
+    new_variables_not_in_hxz = [
+        'niq_saleq_std',
+        'ni_emp',
+        'sale_emp',
+        'ni_at',
+        'ocf_at',
+        'ocf_at_chg1',
+        'roeq_be_std',
+        'roe_be_std',
+        'gpoa_ch5',
+        'roe_ch5',
+        'roa_ch5',
+        'cfoa_ch5',
+        'gmar_ch5'
+    ]
+
+    new_variables_from_hxz = [
+        'cash_at',
+        'ni_inc8q',
+        'ppeinv_gr1a',
+        'lnoa_gr1a',
+        'capx_gr1',
+        'capx_gr2',
+        'capx_gr3',
+        'sti_gr1a',
+        'niq_be',
+        'niq_be_chg1',
+        'niq_at',
+        'niq_at_chg1',
+        'saleq_gr1',
+        'rd5_at',
+        'age',
+        'dsale_dinv',
+        'dsale_drec',
+        'dgp_dsale',
+        'dsale_dsga',
+        'saleq_su',
+        'niq_su',
+        'debt_me',
+        'netdebt_me',
+        'capex_abn',
+        'inv_gr1',
+        'be_gr1a',
+        'op_at',
+        'pi_nix',
+        'op_atl1',
+        'ope_bel1',
+        'gp_atl1',
+        'cop_atl1',
+        'at_be',
+        'ocfq_saleq_std',
+        'aliq_at',
+        'aliq_mat',
+        'tangibility',
+        'eq_dur',
+        'f_score',
+        'o_score',
+        'z_score',
+        'kz_index',
+        'intrinsic_value',
+        'ival_me',
+        'sale_emp_gr1',
+        'emp_gr1',
+        'earnings_variability',
+        'ni_ar1',
+        'ni_ivol'
+    ]
+    # todo finish from table 7
+    # market_based_size_measures =
+
+    @staticmethod
+    def get_all_names():
+        return [x for x in BryanGroups.__dict__.keys() if ('__' not in x) & ('get_' not in x)]
+
+
+BRYAN_MAIN_CATEGORIES = {
+    "Skewness": [
+        "iskew_hxz4_21d",
+        "iskew_ff3_21d",
+        "iskew_capm_21d",
+        "rskew_21d",
+        "rmax5_rvol_21d",
+        "ret_1_0",
+    ],
+    "Profitability": [
+        "o_score",
+        "ebit_sale",
+        "f_score",
+        "ocf_at",
+        "ope_be",
+        "ni_be",
+        "ebit_bev",
+        "niq_be",
+        "ope_bel1",
+        "turnover_var_126d",
+        "dolvol_var_126d",
+    ],
+    "Low Risk": [
+        "betabab_1260d",
+        "beta_60m",
+        "betadown_252d",
+        "beta_dimson_21d",
+        "seas_6_10na",
+        "zero_trades_126d",
+        "turnover_126d",
+        "zero_trades_252d",
+        "zero_trades_21d",
+        "ivol_hxz4_21d",
+        "ivol_ff3_21d",
+        "ivol_capm_21d",
+        "ivol_capm_252d",
+        "rmax5_21d",
+        "rmax1_21d",
+        "rvol_21d",
+        "ocfq_saleq_std",
+        "earnings_variability",
+    ],
+    "Value": [
+        "eqnetis_at",
+        "chcsho_12m",
+        "netis_at",
+        "fcf_me",
+        "eqpo_me",
+        "div12m_me",
+        "eqnpo_me",
+        "eqnpo_12m",
+        "bev_mev",
+        "at_me",
+        "be_me",
+        "debt_me",
+        "eq_dur",
+        "intrinsic_value",  # "ival_me",
+        "sale_me",
+        "ebitda_mev",
+        "ocf_me",
+        "ni_me",
+    ],
+    "Investment": [
+        "emp_gr1",
+        "aliq_at",
+        "be_gr1a",
+        "at_gr1",
+        "capx_gr1",
+        "saleq_gr1",
+        "sale_gr1",
+        "col_gr1a",
+        "inv_gr1a",
+        "inv_gr1",
+        "coa_gr1a",
+        "nncoa_gr1a",
+        "ncoa_gr1a",
+        "lnoa_gr1a",
+        "noa_gr1a",
+        "mispricing_mgmt",
+        "ppeinv_gr1a",
+        "capx_gr3",
+        "capx_gr2",
+        "sale_gr3",
+        "seas_2_5na",
+        "ret_60_12",
+    ],
+    "Seasonality": [
+        "coskew_21d",
+        "corr_1260d",
+        "kz_index",
+        "dbnetis_at",
+        "lti_gr1a",
+        "sti_gr1a",
+        "pi_nix",
+        "seas_6_10an",
+        "seas_11_15an",
+        "seas_16_20an",
+        "seas_2_5an",
+        "seas_11_15na",
+    ],
+    "Debt Issuance": [
+        "noa_at",
+        "ncol_gr1a",
+        "capex_abn",
+        "ni_ar1",
+        "nfna_gr1a",
+        "fnl_gr1a",
+        "debt_gr3",
+    ],
+    "Size": ["rd_me", "prc", "market_equity", "ami_126d", "dolvol_126d"],
+    "Accruals": [
+        "taccruals_at",
+        "oaccruals_at",
+        "cowc_gr1a",
+        "taccruals_ni",
+        "oaccruals_ni",
+        "seas_16_20na",
+    ],
+    "Low Leverage": [
+        "netdebt_me",
+        "cash_at",
+        "z_score",
+        "at_be",
+        "rd5_at",
+        "rd_sale",
+        "aliq_mat",
+        "tangibility",
+        "ni_ivol",
+        "bidaskhl_21d",
+        "age",
+    ],
+    "Profit Growth": [
+        "seas_1_1an",
+        "ret_12_7",
+        "dsale_drec",
+        "tax_gr1a",
+        "saleq_su",
+        "niq_be_chg1",
+        "niq_at_chg1",
+        "niq_su",
+        "ocf_at_chg1",
+        "dsale_dinv",
+        "sale_emp_gr1",
+        "dsale_dsga",
+    ],
+    "Momentum": [
+        "ret_3_1",
+        "prc_highprc_252d",
+        "seas_1_1na",
+        "ret_12_1",
+        "ret_9_1",
+        "ret_6_1",
+        "resff3_6_1",
+        "resff3_12_1",
+    ],
+    "Quality": [
+        "qmj_prof",
+        "niq_at",
+        "mispricing_perf",
+        "op_atl1",
+        "op_at",
+        "cop_atl1",
+        "cop_at",
+        "qmj_growth",
+        "qmj",
+        "ni_inc8q",
+        "dgp_dsale",
+        "qmj_safety",
+        "opex_at",
+        "at_turnover",
+        "sale_bev",
+        "gp_atl1",
+        "gp_at",
+    ],
+}
+
+
+
+
 ##################
 # params classes
 ##################
@@ -173,9 +704,10 @@ class AbnormalRetParams:
 
 class TfIdfParams:
     def __init__(self):
-        self.dict_size = int(1e6)  # or any other value you've defined earlier
-        self.no_below = 20
-        self.no_above = 0.1
+        self.no_below = 1
+        self.no_above = 0.99
+        self.do_some_filtering = False
+        self.vocabulary_list = VocabularySetTfIdf.REUTERS_ONLY
 
 
 
@@ -299,17 +831,19 @@ class Params:
 
     def get_tf_idf_dir(self):
         # create the directory
-        s_enc = self.dict_to_string_for_dir(self.enc.__dict__)
-        save_dir = self.data.base_data_dir + f'tfidf/{s_enc}/'
+        s_enc = self.dict_to_string_for_dir(self.enc.__dict__,old_style=True)
+        s_tf = self.dict_to_string_for_dir(self.tfidf.__dict__,old_style=True)
+        save_dir = self.data.base_data_dir + f'tfidf/{s_enc}/{s_tf}/'
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
     def get_cosine_dir(self,temp=False):
         # create the directory
         s_enc = self.dict_to_string_for_dir(self.enc.__dict__,old_style=True)
+        t_enc = self.dict_to_string_for_dir(self.tfidf.__dict__,old_style=True)
         if temp:
-            save_dir = self.data.base_data_dir + f'temp_cosine/{s_enc}/'
+            save_dir = self.data.base_data_dir + f'temp_cosine/{s_enc}/{t_enc}/'
         else:
-            save_dir = self.data.base_data_dir + f'cosine/{s_enc}/'
+            save_dir = self.data.base_data_dir + f'cosine/{s_enc}/{t_enc}/'
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
 
@@ -490,3 +1024,4 @@ class Params:
                         v = d[k]
                     s += f'{k}{v}'
         return s
+

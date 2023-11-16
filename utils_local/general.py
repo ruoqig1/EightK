@@ -33,3 +33,12 @@ def normalize(x, par:Params):
     if par.train.norm == Normalisation.MINMAX:
         x = 2 * ((x - x.min()) / (x.max() - x.min())) - 1
     return x
+
+
+def get_news_source_to_do_for_tfidf(par: Params):
+    news_source_todo = [NewsSource.EIGHT_PRESS,NewsSource.NEWS_REF,NewsSource.NEWS_THIRD, NewsSource.WSJ_ONE_PER_STOCK] # default = all
+    if par.tfidf.vocabulary_list == VocabularySetTfIdf.REUTERS_ONLY:
+        news_source_todo = [NewsSource.EIGHT_PRESS,NewsSource.NEWS_REF,NewsSource.NEWS_THIRD] # what was done in old versions
+    elif par.tfidf.vocabulary_list == VocabularySetTfIdf.WSJ_ONLY:
+        news_source_todo = [NewsSource.EIGHT_PRESS,NewsSource.WSJ_ONE_PER_STOCK] # version wsj only
+    return news_source_todo

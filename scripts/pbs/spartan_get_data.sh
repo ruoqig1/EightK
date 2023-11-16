@@ -7,8 +7,9 @@ scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim203
 
 
 
-scp -r ~/.ssh/ ./data/tfidf/* adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK//data/tfidf/
-scp -r ~/.ssh/ adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/training_norm/OPT_13b/NEWS_REF_ON_EIGHT_K/*  ./
+scp -r ~/.ssh/ ./data/cosine/* adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK//data/cosine/
+scp -r ~/.ssh/ ./data/cosine_final/* adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK//data/cosine_final/
+scp -r ~/.ssh/ adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/wsj_one_per_ticker.p  ./data/p/
 scp -r ~/.ssh/ ./res/temp/vec_pred/* adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/res/temp/vec_pred/
 
 

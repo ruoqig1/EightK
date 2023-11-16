@@ -19,11 +19,14 @@ if __name__ == "__main__":
     args = didi.parse()
     par=Params()
     data = Data(par)
-    use_constant_in_abret = False
+    save_attilah = False
+    nb_factors = -1
+
     save_dir = Constant.EMB_PAPER+'ss/'
     csv_dir = Constant.DRAFT_1_CSV_PATH
     os.makedirs(save_dir, exist_ok=True)
     os.makedirs(csv_dir, exist_ok=True)
+
 
     # load and process all the ravenpack news
     rav = data.load_ravenpack_all()
@@ -51,8 +54,9 @@ if __name__ == "__main__":
     df = df.loc[df['items'].isin(Constant.LIST_ITEMS_TO_USE),:]
 
     # load and merge with the abnormal returns.
-    ev = pd.read_pickle(data.p_dir + 'abn_ev_monly.p')
+    ev = data.load_abn_return(model=nb_factors)
     df = df.merge(ev)
+
 
     # add the snp 500 boolean
     sp = data.load_snp_const(False)
@@ -62,11 +66,6 @@ if __name__ == "__main__":
     df = df.merge(sp, how='left')
 
     df['in_snp'] = (((df['date'] <= df['ending']) & (df['date'] >= df['start'])) * 1).fillna(0.0)
-
-    # save for attilah
-    df.to_csv('')
-    df[['date','permno','abret','sigma_ra','abs_abret','sigma_abs_ra','sigma_ra','news','big','mcap_d','in_snp','evttime','items','press','article']].to_csv(csv_dir+'coverage_exploration.csv')
-
 
     df = df[['date','permno','abs_abret','sigma_abs_ra','sigma_ra','news','big','mcap_d','evttime']].drop_duplicates()
     # define the big micro mega cap a bit arbitrairly based on decile

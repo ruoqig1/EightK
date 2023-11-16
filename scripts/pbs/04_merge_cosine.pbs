@@ -7,11 +7,11 @@
 #PBS -l ncpus=8
 #PBS -M antoine.didisheim@unimelb.edu.au
 #PBS -m be
-#PBS -N 02_create_tfidf
-#PBS -o out/02_create_tfidf.out
-#PBS -e out/02_create_tfidf.err
+#PBS -N merge
+#PBS -o out/merge.out
+#PBS -e out/merge.err
 
 cd /scratch/nz97/ad4734/EightK/
 module load python3/3.10.4
 source ~/scratch/nz97/ad4734/venv/bin/activate
-python 02_create_tf_idf_model.py
+python 04_merge_cosine.py

@@ -26,6 +26,8 @@ if __name__ == '__main__':
     args = didi.parse()
     data = Data(par)
     final_dir = Constant.DROPBOX_COSINE_DATA+'/'
+    # old_df = pd.read_csv(final_dir+'cosine_data.csv')
+
     os.makedirs(final_dir,exist_ok=True)
     par.enc.opt_model_type = OptModelType.BOW1
     par.enc.news_source = NewsSource.NEWS_THIRD

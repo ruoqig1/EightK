@@ -1,25 +1,13 @@
 import gc
-
-import pandas as pd
-import tqdm
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from nltk import ngrams
-from nltk.tokenize import word_tokenize
-from parameters import *
-from data import Data
-from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.feature_extraction import DictVectorizer
 import json
-import joblib
-from gensim import corpora, models
-import logging
-from gensim.corpora import Dictionary, MmCorpus
-from gensim.models import TfidfModel
-
-from gensim import similarities
+import tqdm
+from gensim import corpora
+from gensim.corpora import MmCorpus
+from data import Data
 from data import load_some_enc
-
+from parameters import *
+from utils_local.general import get_news_source_to_do_for_tfidf
+from experiments_params import get_params_for_tfidf
 # Let's assume you have a function that gives you batches of documents
 # Example of such a function:
 def get_next_batch(text, batch_size):
@@ -29,16 +17,21 @@ def get_next_batch(text, batch_size):
 
 
 if __name__ == '__main__':
-    par = Params()
+    par = get_params_for_tfidf()
     data = Data(par)
     df = pd.DataFrame()
-    par.enc.opt_model_type = OptModelType.BOW1
     save_dir = par.get_tf_idf_dir()
 
     documents_bow = []
-    for news_source in [NewsSource.EIGHT_PRESS,NewsSource.NEWS_REF,NewsSource.NEWS_THIRD]:
+
+    news_source_todo = get_news_source_to_do_for_tfidf(par)
+
+    for news_source in news_source_todo:
+    # for news_source in [NewsSource.EIGHT_PRESS,NewsSource.NEWS_REF,NewsSource.NEWS_THIRD]:
         par.enc.news_source = news_source
         df = load_some_enc(par)
+        print(news_source,flush=True)
+        print(df,flush=True)
         documents_bow += df.values.tolist()
     del df
     gc.collect()
@@ -53,26 +46,22 @@ if __name__ == '__main__':
     #     Update the dictionary
         # dictionary.add_documents([list(doc.keys()) for doc in batch])
     dictionary.add_documents([list(doc.keys()) for doc in tqdm.tqdm(documents_bow,'Add documents to dictionary')])
+    # filter extreme values
+    if par.tfidf.do_some_filtering:
+        dictionary.filter_extremes(no_below=par.tfidf.no_below, no_above=par.tfidf.no_above)
 
-    # dictionary.filter_extremes(no_below=par.tfidf.no_below, no_above=par.tfidf.no_above, keep_n=par.tfidf.dict_size)
     gensim_bow = [dictionary.doc2bow(doc) for doc in tqdm.tqdm(documents_bow,'Building gensim doc')]
     # 2. Save your BoW representations
     outp = save_dir +f'corpus_{par.enc.opt_model_type.name}'
+
     MmCorpus.serialize(outp + '_bow.mm', gensim_bow, progress_cnt=10000, metadata=True)
     print('Saved McCorpus',flush=True)
     dictionary.save_as_text(outp + '_wordids.txt.bz2')
     print('Dictionary',flush=True)
-
-    # # 3. Load the saved BoWs
-    # mm = MmCorpus(outp + '_bow.mm')
-    #
-    # # 4. Compute and save the TF-IDF representations
-    # # tfidf = TfidfModel(mm, id2word=dictionary, normalize=True)
-    # # tfidf = TfidfModel(mm, id2word=dictionary, normalize=True, smartirs='ntc')
-    # tfidf = TfidfModel(mm, id2word=dictionary, normalize=True, smartirs='ltc')
-    #
-    # tfidf.save(outp + '.tfidf_model')
-    # MmCorpus.serialize(outp + '_tfidf.mm', tfidf[mm], progress_cnt=10000)
+    par.save(save_dir=save_dir)
 
 
 
+
+
+# old one 5ab66cb7810d1c6f0adca831144a85aa1b45934210a4a8640a9913c567ebac2e

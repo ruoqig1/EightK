@@ -115,7 +115,12 @@ if __name__ == "__main__":
     name = 'abn_ev_monly.p'
 
     mkt_col = ['mktrf','smb','hml','rmw','cma','umd']
-    name = 'abn_ev5_monly.p'
+    name = 'abn_ev6_monly.p'
+
+    mkt_col = ['mktrf','smb','hml']
+    name = 'abn_ev3_monly.p'
+
+
 
     n_jobs = -1  # Number of cores to use, -1 means all cores
 

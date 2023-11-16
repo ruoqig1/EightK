@@ -57,8 +57,11 @@ class Data:
         self.p_to_vec_main_dir = par.data.base_data_dir + '/to_vec/'
         self.p_some_news_dir = par.data.base_data_dir +'/cleaned/some_news/'
         self.p_bow_merged_dir = Constant.MAIN_DIR + f'data/bow_merged/'
+        self.cosine_final = Constant.MAIN_DIR + f'data/cosine_final/'
 
 
+
+        os.makedirs(self.cosine_final,exist_ok=True)
         os.makedirs(self.p_bow_merged_dir,exist_ok=True)
         os.makedirs(self.p_some_news_dir,exist_ok=True)
         os.makedirs(self.p_to_vec_main_dir,exist_ok=True)
@@ -110,8 +113,6 @@ class Data:
     def load_list_by_date_time_permno_type(self,reload = False):
         if reload:
             df = self.load_icf_current()
-
-            np.sort(df['type'].unique())
 
             # select only proper 8k
             ind = df['type'] == '8-K'
@@ -186,12 +187,10 @@ class Data:
             df = pd.read_pickle(self.p_dir+f'e{window}{tp}_long.p')
         return df
 
-
-    def load_e_ffshort(self, reload=True,window=3):
-        if reload:
-            df = pd.read_csv(self.raw_dir+f'e{window}ff_short.csv')
-            df = df[['permno','evtdate','cret','car']].rename(columns={'evtdate':'fdate'})
-            df['fdate'] = pd.to_datetime(df['fdate'])
+    def load_e_ffshort(self, reload=False,window=3):
+        df = pd.read_csv(self.raw_dir+f'e{window}ff_short.csv')
+        df = df[['permno','evtdate','cret','car']].rename(columns={'evtdate':'fdate'})
+        df['fdate'] = pd.to_datetime(df['fdate'])
         return df
 
     def build_list_of_permno_for_crsp(self):
@@ -356,7 +355,7 @@ class Data:
             df = pd.read_pickle(self.p_dir+'raven_full.p')
         return df
 
-    def load_analyst(self,reload=True):
+    def load_analyst(self,reload=False):
         if reload:
             tr = pd.read_csv(self.raw_dir + 'ibes_tr.csv')
             df = pd.read_csv(self.raw_dir + 'ibes_main.csv')
@@ -647,9 +646,16 @@ class Data:
         return df
 
     def load_abn_return(self,model = 1):
-        if model ==1:
-            # use market model
-            df = pd.read_pickle(self.p_dir+'abn_ev_monly.p')
+        if model == 1:
+            df = pd.read_pickle(self.p_dir + 'abn_ev_monly.p')
+        elif model == 6:
+            df = pd.read_pickle(self.p_dir + 'abn_ev6_monly.p')
+        elif model == 3:
+            df = pd.read_pickle(self.p_dir + 'abn_ev3_monly.p')
+        elif model == -1:
+            # use volume
+            df = pd.read_pickle(self.p_dir + 'trun_ev_monly.p')
+            df['abs_abret'] = df['abret']  # just doing this simplificaiton so the code run similarly for volume
         return df
 
     def load_return_for_nlp_on_eightk(self,reload=False):
@@ -696,10 +702,13 @@ class Data:
             df = pd.read_pickle(self.p_dir+'load_crsp_all.p')
         return df
 
-    def load_main_cosine(self):
-        save_dir = self.par.get_cosine_dir(temp=False)
-        save_dir = Constant.MAIN_DIR+'/data/cosine/opt_model_typeOptModelType.BOW1news_sourceNewsSource.NEWS_THIRDnb_chunks100save_chunks_size500chunk_to_run_id1/'
-        df = pd.read_pickle(save_dir + 'df.p')
+    def load_main_cosine(self,type = None):
+        if type is None:
+            save_dir = Constant.MAIN_DIR+'/data/cosine/opt_model_typeOptModelType.BOW1news_sourceNewsSource.NEWS_THIRDnb_chunks100save_chunks_size500chunk_to_run_id1/'
+            df = pd.read_pickle(save_dir + 'df.p')
+        else:
+            # type ran wsj_one_per_stock.
+            df = pd.read_pickle(self.cosine_final + f'{type}.p')
         return df
     def load_crsp_low_shares(self,reload = False):
         if reload:
@@ -760,7 +769,7 @@ class Data:
             df = pd.read_pickle(self.p_dir+'load_complement_id_for_tfidf_records.p')[['news_id','cosine', 'm_cosine']]
         return df
 
-    def load_rav_coverage(self,reload=False):
+    def load_rav_coverage_split_by(self, reload=False):
         if reload:
             rav = self.load_ravenpack_all()
             rav['pr_r'] = rav['news_type'] == 'PRESS-RELEASE'
@@ -774,7 +783,115 @@ class Data:
             temp = pd.read_pickle(self.p_dir+'load_rav_coverage.p')
         return temp
 
+    def load_turnover(self, reload = False):
+        if reload:
+            df = pd.read_csv(self.raw_dir + 'turnover.csv')
+            df.columns = [x.lower() for x in df.columns]
+            df['shrout'] *= 1000
+            df['turnover'] = (df['vol']) / df['shrout']
+            df['p_vol'] = df['prc'] * df['vol']
+            df['p_shrout'] = df['prc'] * df['shrout']
+            m = df.groupby(['date'])[['p_vol', 'p_shrout']].sum().reset_index()
+            m['turnover_m'] = m['p_vol'] / m['p_shrout']
 
+            df = df[['date', 'permno', 'turnover']].merge(m[['date', 'turnover_m']])
+            df = df.dropna()
+            df.dtypes
+            df.to_pickle(self.p_dir + 'turnover.p')
+        else:
+            df = pd.read_pickle(self.p_dir + 'turnover.p')
+        return df
+
+    def load_wsj(self):
+        df = pd.read_pickle('/data/gpfs/projects/punim2039/bllm/data/all_articles_df.p')
+        return df
+
+    def load_old_cosine(self,reload=False):
+        if reload:
+            final_dir = Constant.DROPBOX_COSINE_DATA + '/'
+            df = pd.read_csv(final_dir + 'cosine_data.csv')
+            df.to_pickle(self.p_dir + 'old_cosine.p')
+        else:
+            df = pd.read_pickle(self.p_dir + 'old_cosine.p')
+        return df
+
+    def load_bryan_data(self,reload = False):
+        if reload:
+            df = pd.read_csv(self.raw_dir+'usa.csv')
+            df = df.dropna(subset='permno')
+            df['permno'] = df['permno'].astype(int)
+            ev = self.load_some_relevance_icf()
+            ind = df['permno'].isin(ev['permno'].unique())
+            df = df.loc[ind,:]
+            df['date']=pd.to_datetime(df['date'],format='%Y%m%d')
+            ind = df['date'].dt.year>=2004
+            df= df.loc[ind,:]
+            df.to_pickle(self.p_dir+'load_bryan_data.p')
+        else:
+            df = pd.read_pickle(self.p_dir+'load_bryan_data.p')
+        return df
+
+    def load_wsj_one_per_tickers(self, reload = False):
+        if reload:
+            list_valid = self.load_list_of_tickers_in_news_and_crsp()
+            list_valid = list(list_valid.drop_duplicates().values)
+
+            df = self.load_wsj()
+
+            ind = df['tickers'].apply(lambda x: '</djn-company>' in str(x))
+            df.loc[ind, 'tickers'] = df.loc[ind, 'tickers'].apply(lambda x: x.split('</djn-company>')[0])
+
+            def extract_tickers(text):
+                tickers = re.findall(r'<c>(.*?)<\/c>', text)
+                tickers_valdi = []
+                for tick in tickers:
+                    if '.' not in tick:
+                        tickers_valdi.append(tick)
+                    else:
+                        if tick.split('.')[1] in ['N', 'O']:
+                            tickers_valdi.append(tick)
+                ticker_in_crsp = []
+                for tick in tickers_valdi:
+                    if tick in list_valid:
+                        ticker_in_crsp.append(tick)
+                return ticker_in_crsp
+
+            df.loc[ind, 'tickers'] = df.loc[ind, 'tickers'].apply(extract_tickers)
+
+            df = df.loc[ind, :]
+            ind = df['tickers'].apply(len).between(1, 5)
+            df = df.loc[ind, :]
+            df = df[['headline', 'text', 'docdate', 'timestamp', 'tickers']].explode('tickers')
+            df['docdate'] = pd.to_datetime(df['docdate'], format='%Y%m%d')
+            df = df.rename(columns={'text':'body','docdate':'date','tickers':'ticker'})
+            df.reset_index(drop=True).to_pickle(self.p_dir+'wsj_one_per_ticker.p')
+        else:
+            df = pd.read_pickle(self.p_dir+'wsj_one_per_ticker.p')
+        return df
+
+    def load_ml_forecast_draft_1(self,model_index = 2):
+        load_dir = 'res/model_final_res/'
+        os.listdir(load_dir)
+        df = pd.read_pickle(load_dir + f'new_{model_index}.p')
+        par = Params()
+        par.load(load_dir, f'/par_{model_index}.p')
+        return df, par
+
+    def load_control_coverage(self,reload = False):
+        if reload:
+            rav = self.load_ravenpack_all()
+            df = rav.copy()
+            df['ym'] = PandasPlus.get_ym(df['rdate'])
+            df['cov_sum'] = df['relevance'] > 0
+            df = df.groupby(['ym', 'permno'])['cov_sum'].sum().reset_index()
+            df['cov_pct'] = df.groupby(['ym'])['cov_sum'].rank(pct=True)
+            df = df.sort_values(['permno', 'ym']).reset_index()
+            df['cov_pct_l'] = df.groupby(['permno'])['cov_pct'].shift(1)
+            df['cov_sum_l'] = df.groupby(['permno'])['cov_sum'].shift(1)
+            df.to_pickle(self.p_dir+'load_control_coverage.p')
+        else:
+            df =pd.read_pickle(self.p_dir+'load_control_coverage.p')
+        return df
 if __name__ == "__main__":
     try:
         grid_id = int(sys.argv[1])
@@ -785,5 +902,4 @@ if __name__ == "__main__":
 
     self = Data(Params())
     # df = self.load_return_for_nlp_on_eightk(True)
-
 
