@@ -650,6 +650,8 @@ class Data:
             df = pd.read_pickle(self.p_dir + 'abn_ev_monly.p')
         elif model == 6:
             df = pd.read_pickle(self.p_dir + 'abn_ev6_monly.p')
+        elif model == 7:
+            df = pd.read_pickle(self.p_dir + 'abn_ev6_long_monly.p')
         elif model == 3:
             df = pd.read_pickle(self.p_dir + 'abn_ev3_monly.p')
         elif model == -1:
@@ -891,6 +893,20 @@ class Data:
             df.to_pickle(self.p_dir+'load_control_coverage.p')
         else:
             df =pd.read_pickle(self.p_dir+'load_control_coverage.p')
+        return df
+
+
+    def load_ati_cleaning_df(self,reload = False):
+        if reload:
+            df = pd.read_csv(self.raw_dir+'currReportsPanel.csv')
+            df = df.loc[df['unique']==1,:]
+            df = df[['acceptanceDate','accessionNumber','cik','permno','mktEquityEvent','avgVol']]
+            df = df.rename(columns={'acceptanceDate':'adate','accessionNumber':'form_id','mktEquityEvent':'mcap_e','avgVol':'avg_vol'})
+            df['adate'] = pd.to_datetime(df['adate'])
+            df['permno'] = df['permno'].astype(int)
+            df.to_pickle(self.p_dir+'load_ati_cleaning_df.p')
+        else:
+            df =pd.read_pickle(self.p_dir+'load_ati_cleaning_df.p')
         return df
 if __name__ == "__main__":
     try:

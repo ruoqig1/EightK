@@ -38,6 +38,17 @@ class Normalisation(Enum):
     ZSCORE ='ZSCORE'
     MINMAX ='MINMAX'
 
+class PredictorsCoverage(Enum):
+    ALL = 'all'
+    COVE_ONLY = 'cove_only'
+    ALL_BUT_COV = 'all_but_cove'
+    ITEMS_NAMES = 'items'
+    ITEMS_NAMES_AND_SIZE = 'items_and_size'
+
+
+class MLModel:
+    RF ='RF'
+
 class VocabularySetTfIdf(Enum):
     ALL = 'All'
     REUTERS_ONLY = 'reuters_only'
@@ -676,6 +687,15 @@ class DataParams:
 
         self.data_to_use_name = 'load_xy_ravenpack_monthly_vy'
 
+class CoveragePredict:
+    def __init__(self):
+        self.predictors = PredictorsCoverage.ITEMS_NAMES
+        self.normalize = Normalisation.ZSCORE
+        self.contemp_cov = None # None
+        self.model = MLModel.RF
+        self.small_sample = False
+        self.use_age_and_market_only = None # None
+
 class AbnormalRetParams:
     def __init__(self):
         self.ev_window = 20
@@ -789,6 +809,13 @@ class Params:
         self.grid = GridParams()
         self.tfidf = TfIdfParams()
         self.model_ran_dir = Constant.MAIN_DIR+'res/model_ran/'
+        self.covpred = CoveragePredict()
+
+    def get_coverage_predict_save_dir(self):
+        cov_enc = self.dict_to_string_for_dir(self.covpred.__dict__,old_style=True)
+        dir_ = Constant.MAIN_DIR+f'res/cov_pred_rf/{cov_enc}/'
+        os.makedirs(dir_,exist_ok=True)
+        return dir_
 
     def get_vec_process_dir(self, merged_bow = False, index_permno_only = False):
         # create the directory

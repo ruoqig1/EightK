@@ -9,7 +9,9 @@ from utils_local.nlp_ticker import *
 from itertools import chain
 from utils_local.plot import plot_ev, plot_ev_no_conf
 from matplotlib import pyplot as plt
-
+import didipack as didi
+from data import Data
+from didipack import PandasPlus
 
 def print_size(df,step):
     print(f'### Step {step}')
@@ -19,14 +21,14 @@ if __name__ == "__main__":
     args = didi.parse()
     par=Params()
     data = Data(par)
-    nb_factors = -1
-    if nb_factors == 1:
+    nb_factors = 6
+    if nb_factors == 6:
         save_dir = Constant.EMB_PAPER+'ss/'
     else:
         save_dir = Constant.EMB_PAPER+'temp/'
     os.makedirs(save_dir, exist_ok=True)
 
-    rav = data.load_ravenpack_all()
+
 
     df = data.load_some_relevance_icf()
     df['news'] = df['no_rel']==0
@@ -59,12 +61,14 @@ if __name__ == "__main__":
     # df['big'] = df['in_snp'].replace({1:'snp',0:'non_snp'})
     # sizes =df['big'].unique()
 
-    t = df.groupby(['date', 'permno'])['abs_abret'].transform('mean')
-
+    t = df.loc[df['evttime']==df['evttime'].min(),:].groupby(['date', 'permno'])['abs_abret'].mean().reset_index().rename(columns={'abs_abret':'norm'})
+    df =df.merge(t)
     if nb_factors>0:
-        df['abs_abret_norm'] = df['abs_abret'] - t
+        df['abs_abret_norm'] = df['abs_abret'] -df['norm']
+        df = df.loc[df['evttime'].between(-15, 15),:]
     else:
         df['abs_abret_norm'] = df['abs_abret']
+    
 
 
     # df.groupby('big')['mcap_d'].unique()
@@ -78,7 +82,7 @@ if __name__ == "__main__":
         m = df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
         s= df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
         c= df.loc[ind,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
-        plot_ev(m, s, c, do_cumulate=False, label_txt='News')
+        plot_ev(m, s, c, do_cumulate=False, label_txt='Covered')
         plt.tight_layout()
         plt.savefig(save_dir+big+'.png')
         plt.tight_layout()
@@ -100,7 +104,7 @@ if __name__ == "__main__":
         m = df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
         s= df.loc[ind,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
         c= df.loc[ind,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
-        plot_ev(m, s, c, do_cumulate=False, label_txt='News')
+        plot_ev(m, s, c, do_cumulate=False, label_txt='Covered')
         plt.tight_layout()
         plt.savefig(save_dir+f'q{big}.png')
         plt.tight_layout()
@@ -112,7 +116,7 @@ if __name__ == "__main__":
     m = df.loc[:,:].groupby(['evttime','news'])['abs_abret_norm'].mean().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
     s= df.loc[:,:].groupby(['evttime','news'])['abs_abret_norm'].std().reset_index().pivot(columns='news',index='evttime',values='abs_abret_norm')
     c= df.loc[:,:].groupby(['evttime','news'])['permno'].count().reset_index().pivot(columns='news',index='evttime',values='permno')
-    plot_ev_no_conf(m, do_cumulate=False, label_txt='News')
+    # plot_ev_no_conf(m, do_cumulate=False, label_txt='Covered')
+    plot_ev(m, s, c, do_cumulate=False, label_txt='Covered')
     plt.savefig(save_dir+'intro_plot.png')
-    # plot_ev(m, s, c, do_cumulate=False, label_txt='News')
     plt.show()

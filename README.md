@@ -26,4 +26,12 @@ TODO:
 
 TF RECORDS:
 * vec_to_tf_records.py is transforming it into this nice tf format
-* train_tf.py is my full training routine. 
+* train_tf.py is my full training routine.
+
+
+
+to push to gadi
+load_control_coverage
+load_bryan_data
+rel_max
+

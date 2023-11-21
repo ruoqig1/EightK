@@ -38,12 +38,11 @@ def plot_home_made_shapeley(sh, base_accuracy,dumb_accuracy):
 if __name__ == '__main__':
     args = didi.parse()
 
-
     # Plotting the ROC curve
     plt.figure()
 
     pred = []
-    for i in range(3):
+    for i in range(4):
         par = get_experiments_coverage_pred(i)
         load_dir = par.get_coverage_predict_save_dir()
         os.listdir(load_dir)
@@ -56,6 +55,7 @@ if __name__ == '__main__':
         r.name = par.covpred.predictors.name
         pred.append(r)
     c = pd.concat(pred,axis=1)
+    print(c.corr())
     y_test['pred_prb'] = c.drop(columns='ALL').mean(1)
     fpr, tpr, _ = roc_curve(y_test['covered'], y_test['pred_prb'])
     roc_auc = auc(fpr, tpr)

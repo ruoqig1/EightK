@@ -48,7 +48,16 @@ def get_main_experiments(id_comb:int,train=True,train_gpu = False) -> Params:
     par.update_param_grid(grid, id_comb=id_comb)
     return par
 
-
+def get_experiments_coverage_pred(id_comb:int,train=True) -> Params:
+    print('START WORKING ON ',id_comb,flush=True)
+    par=Params()
+    grid = [
+        ['covpred', 'predictors',[PredictorsCoverage.ITEMS_NAMES_AND_SIZE,PredictorsCoverage.ALL,PredictorsCoverage.COVE_ONLY,PredictorsCoverage.ALL_BUT_COV]],
+        # ['covpred', 'small_sample',[False,True]],
+    ]
+    # par.train.T_train = -60
+    par.update_param_grid(grid, id_comb=id_comb)
+    return par
 
 def get_experiment_for_paper_draft_in_oct_2023(id_comb:int,train=True) -> Params:
     print('START WORKING ON ',id_comb,flush=True)

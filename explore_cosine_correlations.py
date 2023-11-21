@@ -46,29 +46,28 @@ def load_conditional_on_press_and_coerage(wsj = False,margin_in_perc = 1.25):
     df = df.merge(bryan, left_on=['permno', 'ym'], right_on=['permno', 'ym'], how='left')
     return df
 
-def load_coverage_as_in_first_paper():
+def load_coverage_as_in_first_paper(data):
     df = data.load_some_relevance_icf()
     df['covered'] = (df['relevance']>0)*1
     df['form_date'] = df['adate']
-    df = df[['form_date','permno','covered']].drop_duplicates()
+    d = pd.get_dummies(df['items'])
+    df = pd.concat([df,d],axis=1)
+
+    df = df[['form_date','permno','covered']+list(d.columns)].drop_duplicates()
     df['cosine'] =1
     bryan = data.load_bryan_data()
     bryan['ym'] = PandasPlus.get_ym(bryan['date'])
     df['ym'] = PandasPlus.get_ym(df['form_date'])
     pd.isna(bryan['market_equity']).mean()
     df = df.merge(bryan,left_on =['permno','ym'],right_on=['permno','ym'],how='left')
+    cov = data.load_control_coverage().drop(columns='index')
+    cov['permno'] = cov['permno'].astype(int)
+    df=df.merge(cov,left_on = ['permno','ym'],right_on = ['permno','ym'],how='left')
     return df
-if __name__ == '__main__':
-    par = Params()
-    data = Data(par)
-    # df = load_conditional_on_press_and_coerage(wsj=True,margin_in_perc=1.25)
-    df = load_coverage_as_in_first_paper()
-    data.load_control_coverage()
 
-
-
+def run_all_single_regressions(df):
     res = []
-    control = ['market_equity','age']
+    control = ['market_equity','age','cov_pct_l']
     failed = []
     with_fe = False
     for cat in BRYAN_MAIN_CATEGORIES.keys():
@@ -103,6 +102,15 @@ if __name__ == '__main__':
         print(c)
         print('#'*50)
         print(res.loc[res['cat'] == c, :])
+    return res
+
+
+if __name__ == '__main__':
+    par = Params()
+    data = Data(par)
+    # df = load_conditional_on_press_and_coerage(wsj=True,margin_in_perc=1.25)
+    df = load_coverage_as_in_first_paper(data)
+
 
     variable = ['age','tangibility','lti_gr1a','dbnetis_at', 'at_turnover', #,'corr_1260d'
      'ni_inc8q','turnover_var_126d','dolvol_var_126d','zero_trades_252d',
@@ -117,23 +125,36 @@ if __name__ == '__main__':
 
 
 
-    other_col = ['cosine', 'covered', 'permno', 'form_date']
+    controls = ['cov_pct_l']
+    # controls = []
+
+    other_col = ['cosine', 'covered', 'permno', 'form_date','cov_pct_l']
+    # other_col = ['cosine', 'covered', 'permno', 'form_date']
+
     temp = df[other_col+variable].dropna().copy()
+
+    fe = pd.get_dummies(np.floor((temp['cov_pct_l']-0.00001)*100))
+    fe.sum(1).max()
+    temp = pd.concat([temp,fe],axis=1)
+    controls = list(fe.columns)
+    controls.remove(0.0)
+    controls =controls
+
+
+    const = ['const']
+    const = []
     m_quantile = temp.groupby('form_date')['market_equity'].rank(pct=True)
-    np.round(m_quantile*10)
-    ind = m_quantile<0.9
-
-
-    temp.shape[0]/df.shape[0]
-
+    ind = m_quantile<1.01
     temp = temp.loc[ind,:]
 
     temp['market_equity'] = np.log(temp['market_equity'])
-    const = ['const']
     temp['const'] = 1.0
     for v in variable:
         temp[v] = (temp[v] - temp[v].mean()) / temp[v].std()
-    m = sm.Logit(temp['covered'], temp[variable + const]).fit(cov_type='cluster', cov_kwds={'groups': temp['form_date']})
+    m = sm.Logit(temp['covered'], temp[variable + const+controls]).fit(cov_type='cluster', cov_kwds={'groups': temp['form_date']})
 
     print(m.summary())
+
+
+
 

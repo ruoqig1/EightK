@@ -5,6 +5,7 @@ from parameters import *
 import numpy as np
 from utils_local.nlp_tokenize_and_bow import clean_from_txt_to_bow
 import json
+
 class EncodingModel:
     def __init__(self, par : Params):
         if par.enc.opt_model_type not in [OptModelType.BOW1]:

@@ -102,7 +102,7 @@ if __name__ == "__main__":
     data = Data(par)
     df = load_and_preprocess_v2(par)
 
-    ev_window = 20
+    ev_window = 60
     gap_window = 50
     rolling_window = 100
     min_rolling = 70
@@ -119,6 +119,11 @@ if __name__ == "__main__":
 
     mkt_col = ['mktrf','smb','hml']
     name = 'abn_ev3_monly.p'
+
+
+
+    mkt_col = ['mktrf','smb','hml','rmw','cma','umd']
+    name = 'abn_ev6_long_monly.p'
 
 
 

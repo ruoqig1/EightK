@@ -48,10 +48,12 @@ if __name__ == "__main__":
                 df = data.load_return_for_nlp_on_eightk()
                 ev = data.load_list_by_date_time_permno_type()
                 vec = pd.DataFrame()
-                for f in tqdm.tqdm(os.listdir(par.get_vec_process_dir()), 'merge the vectors'):
+                for f in tqdm.tqdm(os.listdir(par.get_vec_process_dir()[:10]), 'merge the vectors'):
                     t = pd.read_pickle(par.get_vec_process_dir() + f).reset_index()
                     vec = pd.concat([vec, t], axis=0)
+
                 vec = vec.rename(columns={'item': 'items'})
+                breakpoint()
                 df = df.drop_duplicates()
                 df = vec.merge(df)
                 print(df.head(), flush=True)

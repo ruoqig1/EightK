@@ -90,8 +90,8 @@ if __name__ == "__main__":
     df = df.dropna()
 
     df['pred'].mean()
-    ind_time = (df['evttime']>=-3) & (df['evttime']<= 20)
-    ind_time = (df['evttime']>=-5) & (df['evttime']<= 20)
+    ind_time = (df['evttime']>=-3) & (df['evttime']<= 40)
+    ind_time = (df['evttime']>=-5) & (df['evttime']<= 60)
 
 
 
