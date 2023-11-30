@@ -5,7 +5,7 @@ chmod +x $0
 
 # Define the upper limit as a variable
 lower_limit=0
-upper_limit=32
+upper_limit=134
 # Loop from 0 to 134
 for i in $(seq $lower_limit $upper_limit); do
 

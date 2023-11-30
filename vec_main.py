@@ -95,11 +95,11 @@ def drop_already_process_text_from_df(df, par):
 
 
 def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
-    batch_size = 4
+    batch_size = 10
     if par.enc.opt_model_type == OptModelType.BOW1:
         save_size = 10000
     else:
-        save_size = 1000
+        save_size = 5000
     # load and pre process data (code specific)
     data = Data(par)
     load_dir = data.p_to_vec_main_dir + '/single_stock_news_to_vec/'
@@ -136,8 +136,9 @@ if __name__ == "__main__":
     else:
         # par.enc.opt_model_type = OptModelType.OPT_13b
         par.enc.opt_model_type = OptModelType.OPT_6b7
-        # par.enc.opt_model_type = OptModelType.OPT_30b
-
+        if args.small == 1:
+            print('encodign small')
+            par.enc.opt_model_type = OptModelType.OPT_125m
     if args.bow == 1:
         par.enc.opt_model_type = OptModelType.BOW1
 
@@ -170,6 +171,7 @@ if __name__ == "__main__":
         if args.ref == 1:
             print('START NEWS, REF', flush=True)
             par.enc.news_source = NewsSource.NEWS_REF
+            # par.enc.opt_model_type = OptModelType.OPT_125m
             id_col, save_size, batch_size, year, df = load_and_process_news_one_stock_ref_or_third(par, args, 'ref')
         else:
             print('START NEWS, THIRD', flush=True)

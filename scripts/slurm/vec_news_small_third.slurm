@@ -1,19 +1,18 @@
 #!/bin/bash -l
-#SBATCH --job-name="vec_news_ref_"
-#SBATCH --output=/home/adidishe/EightK/out/vec_news_ref_%a.out
-#SBATCH --error=/home/adidishe/EightK/out/vec_news_ref_%a.err
+#SBATCH --job-name="vec_news_third_"
+#SBATCH --output=/home/adidishe/EightK/out/vec_news_third_%a.out
+#SBATCH --error=/home/adidishe/EightK/out/vec_news_third_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
 #SBATCH --array=0-26
 
 # Partition for the job:
-#SBATCH --partition=gpu-a100
-#SBATCH --gres=gpu:1
+#SBATCH --partition=cascade
 #SBATCH --account="punim2039"
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=64G
-#SBATCH --cpus-per-task=8
+#SBATCH --mem=24G
+#SBATCH --cpus-per-task=4
 #SBATCH --time=0-24:0:00
 
 #SBATCH --mail-user=antoine.didisheim@unimelb.edu.au
@@ -27,5 +26,5 @@ module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0-deeplearn
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 vec_main.py ${SLURM_ARRAY_TASK_ID} --legal=0 --eight=0 --news=1 --ref=1 --bow=0
+python3 vec_main.py ${SLURM_ARRAY_TASK_ID} --legal=0 --eight=0 --news=1 --ref=0 --bow=0 --small=1
 

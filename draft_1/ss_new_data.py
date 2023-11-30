@@ -11,7 +11,7 @@ from utils_local.plot import plot_ev, plot_ev_no_conf
 from matplotlib import pyplot as plt
 from didipack import PlotPlus, PandasPlus
 import didipack as didi
-
+from utils_local.general import table_to_latex_complying_with_attila_totally_unreasonable_demands
 def check_time_effect():
     ev = data.load_abn_return(1)
     ev['ym'] = PandasPlus.get_ym(ev['date'])
@@ -36,18 +36,6 @@ def check_time_effect():
     plt.show()
 
 
-def table_to_latex_complying_with_attila_totally_unreasonable_demands(df, rnd, paths, name):
-    latex_str = df.round(rnd).to_latex(float_format=f"%.{rnd}f")
-
-    lr = latex_str.split('tabular}{')[1].split('}')[0]
-    latex_str = latex_str.replace(lr,lr[1:]+'}')
-    latex_str=latex_str.replace(r'\begin{tabular}',r'\begin{tabular*}{1\linewidth}{@{\hskip\tabcolsep\extracolsep\fill}l*{1}')
-    latex_str=latex_str.replace(r'\end{tabular}',r'\end{tabular*}')
-
-    # Save the modified string to a file
-    file_path = paths + name
-    with open(file_path, 'w') as f:
-        f.write(latex_str)
 
 
 

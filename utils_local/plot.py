@@ -28,7 +28,7 @@ def plot_ev(m,s,c,do_cumulate = True,label_txt = 'News',t_val =2.58, ax =None,ti
         m = m.cumsum()
         s = np.sqrt((s ** 2).cumsum())
     s = s / np.sqrt(c)
-    color = Constant.COLOR_DUO
+    color = Constant.COLOR_TRIO
     k = -1
     if ax is None:
         for x in m.columns:
@@ -99,3 +99,4 @@ def plot_with_every_ticks_tight_and_grid(index):
     plt.xticks(index,index,rotation=90)
     plt.grid()
     plt.tight_layout()
+

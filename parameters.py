@@ -21,6 +21,8 @@ import hashlib
 class NewsSource(Enum):
     WSJ = 'wsj'
     EIGHT_LEGAL ='eight_legal'
+    EIGHT_LEGAL_ATI ='eight_legal_ati'
+    EIGHT_LEGAL_ATI_TRAIN ='eight_legal_ati_train'
     EIGHT_PRESS ='eight_press'
     NEWS_REF ='NEWS_REF'
     NEWS_REF_ON_EIGHT_K ='NEWS_REF_ON_EIGHT_K'
@@ -88,10 +90,12 @@ class Constant:
 
     HOME_DIR = os.path.expanduser("~")
     EMB_PAPER = os.path.join(HOME_DIR, 'Dropbox/Apps/Overleaf/052-EMB/res/')
+    TRI_PAPER = os.path.join(HOME_DIR, 'Dropbox/Apps/Overleaf/053-TRI/res/')
     DROPBOX_COSINE_DATA = os.path.join(HOME_DIR, 'Dropbox/AB-AD_Share/cosine/data/')
 
 
     COLOR_DUO = ['k', 'b']
+    COLOR_TRIO = ['k', 'b','g']
     FRED_API = 'cfc526395a5631650ec0b7ee96b149f4'
 
     DRAFT_1_CSV_PATH = '/Users/adidisheim/Dropbox/AB-AD_Share/052-EMB/datasets/draft_1/csv/'

@@ -19,6 +19,7 @@ def load_data_for_this_chunks(par: Params):
     start = par.grid.year_id - par.train.T_train
     end = par.grid.year_id + par.train.testing_window
     load_dir = par.get_training_norm_dir()
+    print('Load dir check',load_dir, flush=True)
     years_in_the_list = np.sort(np.unique([int(x.split('_')[1].split('.')[0]) for x in os.listdir(load_dir)]))
     df = pd.DataFrame()
     x = pd.DataFrame()

@@ -37,6 +37,8 @@ def plot_home_made_shapeley(sh, base_accuracy,dumb_accuracy):
 
 if __name__ == '__main__':
     args = didi.parse()
+    save_dir = Constant.TRI_PAPER
+    os.makedirs(save_dir,exist_ok=True)
 
     # Plotting the ROC curve
     plt.figure()
@@ -69,4 +71,5 @@ if __name__ == '__main__':
     plt.title('Receiver Operating Characteristic')
     plt.legend(loc="lower right")
     plt.tight_layout()
+    plt.savefig(save_dir+'ml_roc_main.png')
     plt.show()

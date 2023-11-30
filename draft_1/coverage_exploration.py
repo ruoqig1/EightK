@@ -20,7 +20,7 @@ if __name__ == "__main__":
     par=Params()
     data = Data(par)
     save_attilah = False
-    nb_factors = -1
+    nb_factors = 7
 
     save_dir = Constant.EMB_PAPER+'ss/'
     csv_dir = Constant.DRAFT_1_CSV_PATH

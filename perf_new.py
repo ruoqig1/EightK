@@ -26,6 +26,7 @@ def load_res(par:Params):
     temp_save_dir = par.get_res_dir()
     # to uncoment with the line commented a bit above for the one ok ish result
     res = pd.DataFrame()
+    print('start loading from',temp_save_dir)
     for f in np.sort(os.listdir(temp_save_dir)):
         t = pd.read_pickle(temp_save_dir + f)
         res = pd.concat([res, t], axis=0)
@@ -45,8 +46,9 @@ if __name__ == "__main__":
     temp_dir ='res/temp_new/'
     temp_dir ='res/model_final_long/'
     temp_dir ='res/model_tf/'
+    temp_dir ='res/model_tf_ati_2/'
     os.makedirs(temp_dir,exist_ok=True)
-    for i in range(1):
+    for i in range(12):
     # for i in [0]:
         par = get_main_experiments(i,train=False)
         try:
@@ -54,7 +56,16 @@ if __name__ == "__main__":
             df.to_pickle(f'{temp_dir}/new_{i}.p')
             par.save(save_dir=temp_dir, file_name=f'par_{i}.p')
             print(df['date'].dt.year.unique())
-            # print('ACCURACY OVERALL',df['acc'].mean())
+            print('v1')
+            df['acc'] = np.sign(df['ret'])==df['pred']
+            df['acc_ab'] = np.sign(df['abret'])==df['pred']
+            print(df[['acc','acc_ab']].mean())
+            print('v2')
+            df['pred'] = ((df['pred_prb']>df.groupby(df['date'].dt.year)['pred_prb'].transform('mean'))*2)-1
+            df['acc'] = np.sign(df['ret'])==df['pred']
+            df['acc_ab'] = np.sign(df['abret'])==df['pred']
+            print(df[['acc','acc_ab']].mean())
+
             # print('Sanity check',df['pred'].mean())
         except:
             print(i,'bugged')

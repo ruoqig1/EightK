@@ -58,7 +58,7 @@ SlurmdDebug=info
 SlurmdLogFile=/var/log/slurm-llnl/slurmd.log
 #
 # COMPUTE NODES
-NodeName=localhost CPUs=32 RealMemory=120000 State=UNKNOWN
+NodeName=localhost CPUs=32 RealMemory=130000 State=UNKNOWN
 PartitionName=LocalQ Nodes=ALL Default=YES MaxTime=INFINITE State=UP
 EOF
 

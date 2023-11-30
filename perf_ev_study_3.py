@@ -22,7 +22,7 @@ if __name__ == "__main__":
     use_reuters_news = False
     use_rav_cov_news_v2 = False
     nb_factors = 7
-    nb_groups = 10
+    nb_groups = 5
     for nb_factors in [7,1,2,3,6]:
     # for nb_factors in [7]:
         winsorise_ret = -1
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             df = df.dropna()
 
             ind_time = (df['evttime']>=-5) & (df['evttime']<= 40)
-            ind_time = (df['evttime']>=-2) & (df['evttime']<= 40)
+            ind_time = (df['evttime']>=-2) & (df['evttime']<= 20)
 
 
             size_ind = df['mcap_d']<=10
@@ -119,32 +119,23 @@ if __name__ == "__main__":
 
 
             nb_row = nb_groups+1
-            fig, axes = plt.subplots(nrows=nb_row, ncols=2, figsize=(12, 6*nb_row))  # 2 subplots side by side
+            fig, axes = plt.subplots(nrows=nb_row, ncols=1, figsize=(12, 6*nb_row))  # 2 subplots side by side
             n_list = [False,True] if use_relase else [0,1]
             k = 0
             for dec, size_ind in tqdm.tqdm(enumerate(size_ind_list),f'Model {model_index}'):
-                for n in n_list:
-                    ind = df['news0']==n
-                    k+=1
-                    if n == -1:
-                        ind = df['news0']<=100
-                    m = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].mean().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
-                    s = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[sigma_col].mean().reset_index().pivot(columns=pred_col, index='evttime', values=sigma_col)
-                    c = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].count().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
-                    # m_all = df.loc[ind_time & ind & size_ind, :].groupby(['evttime'])[start_ret].mean()
-                    # s_all = df.loc[ind_time & ind & size_ind, :].groupby(['evttime'])[sigma_col].mean()
-                    # c_all = c.sum(1)
-                    # m['all'] = m_all
-                    # s['all'] =s_all
-                    # c['all'] =c_all
-                    mean_mcap = np.round(df.loc[(size_ind & ind_time),'mcap'].mean()/1e6,3)
-                    plt.subplot(nb_row, 2, k)
-                    plot_ev(m, s, c, do_cumulate=True, label_txt='Prediciton')
-                    plt.title(f'{n} Quantile={dec} (mcap={mean_mcap})')
+                df['sign_ret'] = df[start_ret] * df[pred_col]
+                m = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].mean().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
+                s = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])[sigma_col].mean().reset_index().pivot(columns='news0', index='evttime', values=sigma_col)
+                c = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].count().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
+                k += 1
+                mean_mcap = np.round(df.loc[(size_ind & ind_time),'mcap'].mean()/1e6,3)
+                plt.subplot(nb_row, 1, k)
+                plot_ev(m, s, c, do_cumulate=True, label_txt='Prediciton')
+                plt.title(f'Quantile={dec} (mcap={mean_mcap})')
             plt.tight_layout()
             final_dir = save_dir+f'fact{nb_factors}/'
             os.makedirs(final_dir,exist_ok=True)
             save_dest  =final_dir+f'{model_index}.png'
             plt.savefig(save_dest)
-            plt.close()
+            plt.show()
 

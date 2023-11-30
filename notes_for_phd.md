@@ -19,9 +19,12 @@ the big class doing the heavy lifting is in llm.py and is just a wrapper arround
 1) Paramneters.
 [perf_portfolio.py](perf_portfolio.py)
 
-
 # not for angella
 * check notes above to udnerstand how vecotrisation code works 
 * check vec_to_tf to understand how we build the datset
 * check train_tf to udnerstand how to train the elasticnet model. 
 * perf_tf build the non working sharpe ratio :)
+
+TODO: 
+* step 1 make sure you manage tyo run stuff on spartan
+* INCLUDING gpus codes :) 

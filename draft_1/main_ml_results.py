@@ -21,7 +21,7 @@ if __name__ == "__main__":
     data = Data(par)
     use_reuters_news = False
     use_rav_cov_news_v2 = False
-    nb_factors = 6
+    nb_factors = 1
     winsorise_ret = -1
     do_cumulate = True
     # t_val = 1.96
@@ -29,7 +29,9 @@ if __name__ == "__main__":
     use_relase = False
     pred_col = 'pred'
     # pred_col = 'pred_rnd_2'
-    model_index = 2 # 2 is our main
+    use_ati = True
+    model_index = 1 # 2 is our main 1 is ok with atis...
+    # start_ret ='ret'
     start_ret ='abret'
     sigma_col = 'sigma_ret_train' if start_ret == 'ret' else 'sigma_ra'
 
@@ -37,8 +39,22 @@ if __name__ == "__main__":
         save_dir = Constant.EMB_PAPER + 'release/'
     else:
         save_dir = Constant.EMB_PAPER + 'news/'
+    if use_ati:
+        save_dir = 'res/ati_plot/'
+
     os.makedirs(save_dir,exist_ok=True)
-    df, par = data.load_ml_forecast_draft_1()
+    if use_ati:
+        print('load new')
+        load_dir = 'res/model_tf_ati_2/'
+        os.listdir(load_dir)
+        df = pd.read_pickle(load_dir + f'new_{model_index}.p')
+        par = Params()
+        par.load(load_dir, f'/par_{model_index}.p')
+    else:
+        df, par = data.load_ml_forecast_draft_1()
+    t=data.load_ati_cleaning_df()[['form_id','permno']].drop_duplicates()
+    t['form_id'] = t['form_id'].apply(lambda x: x.replace('-',''))
+    df = df.drop(columns='permno').merge(t)
 
     print(df.groupby(df['date'].dt.year)['permno'].count())
     if use_relase:
@@ -61,14 +77,14 @@ if __name__ == "__main__":
 
     df['acc'] = df['pred']==np.sign(df['abret'])
 
-    print(par.train.abny,par.train.l1_ratio)
+    print(par.train.abny,par.train.l1_ratio, par.train.norm.name)
 
     # acc = df.groupby('items')['acc'].aggregate(['mean','count']).sort_values('mean')
     # item_to_keep = acc.loc[acc['count']>50,:].index
 
     # df = df.loc[~df['items'].isin([5.06,5.01,4.02]),:]
     # df = df.loc[df['items'].isin(item_to_keep),:]
-    ev = data.load_abn_return(model=nb_factors)
+    ev = data.load_abn_return(model=nb_factors,with_alpha=False)
 
     if winsorise_ret>0:
         for model_index in tqdm.tqdm(ev['evttime'].unique(), 'winsorize'):
@@ -92,10 +108,11 @@ if __name__ == "__main__":
     df['pred'].mean()
     ind_time = (df['evttime']>=-3) & (df['evttime']<= 40)
     ind_time = (df['evttime']>=-5) & (df['evttime']<= 60)
-
+    # ind_time = (df['evttime']>=-1) & (df['evttime']<= 60)
 
 
     size_ind = df['mcap_d']<=10
+    # size_ind = df['mcap_d']>=5
     df['pred_rnd'] = np.sign(np.random.normal(size=df['pred'].shape))
     df['pred_rnd_2'] = np.sign(np.random.normal(size=df['pred'].shape)+0.5)
 
@@ -111,6 +128,8 @@ if __name__ == "__main__":
         plot_ev(m, s, c, do_cumulate=True, label_txt='Prediciton')
         plt.tight_layout()
         plt.savefig(save_dir+f'car_n{n}.png')
+        plt.title(f'{n}')
+        plt.tight_layout()
         plt.show()
 
     # LONG SHORT EV
@@ -146,12 +165,6 @@ if __name__ == "__main__":
     plt.title('LONG SHORT VW')
     plt.tight_layout()
     plt.show()
-
-
-
-    ###### argue that the measure is indeed uncorelated to
-    df.loc[df['evttime']==0,['pred','pred_prb']]
-
 
 
 

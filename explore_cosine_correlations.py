@@ -8,7 +8,7 @@ from data import Data
 from matplotlib import pyplot as plt
 from didipack import OlsPLus
 from parameters import BRYAN_MAIN_CATEGORIES
-
+import didipack as didi
 def load_conditional_on_press_and_coerage(wsj = False,margin_in_perc = 1.25):
     if wsj:
         df = data.load_main_cosine('wsj_one_per_stock')
@@ -113,48 +113,59 @@ if __name__ == '__main__':
 
 
     variable = ['age','tangibility','lti_gr1a','dbnetis_at', 'at_turnover', #,'corr_1260d'
-     'ni_inc8q','turnover_var_126d','dolvol_var_126d','zero_trades_252d',
-     # 'betadown_252d','betabab_1260d','beta_60m','ivol_capm_252d',
-     'beta_60m','ivol_capm_252d',
-     'market_equity',
-     # 'ret_9_1','ret_3_1',
-     'ret_9_1',
-     'eqnpo_12m','be_me','emp_gr1','col_gr1a',
-     'ret_1_0'
-     ]
+                'ni_inc8q','turnover_var_126d','dolvol_var_126d','zero_trades_252d',
+                # 'betadown_252d','betabab_1260d','beta_60m','ivol_capm_252d',
+                'beta_60m','ivol_capm_252d',
+                'market_equity',
+                # 'ret_9_1','ret_3_1',
+                'ret_9_1',
+                'eqnpo_12m','be_me','emp_gr1','col_gr1a',
+                'ret_1_0'
+                ]
+
+    tr_dict = {}
+    for v in variable:
+        tr_dict[v] = v.replace('_',' ')
 
 
 
-    controls = ['cov_pct_l']
-    # controls = []
-
-    other_col = ['cosine', 'covered', 'permno', 'form_date','cov_pct_l']
+    other_col = ['cosine', 'covered', 'permno', 'form_date','cov_pct_l','cov_pct']
     # other_col = ['cosine', 'covered', 'permno', 'form_date']
 
     temp = df[other_col+variable].dropna().copy()
 
-    fe = pd.get_dummies(np.floor((temp['cov_pct_l']-0.00001)*100))
-    fe.sum(1).max()
-    temp = pd.concat([temp,fe],axis=1)
+    fe = pd.get_dummies(np.floor((temp['cov_pct_l']-0.00001)*10))
+    fe.columns = [f'l{int(x)}' for x in fe]
+    fe_contemp = pd.get_dummies(np.floor((temp['cov_pct']-0.00001)*10))
+    fe_contemp.columns = [f'c{int(x)}' for x in fe_contemp]
+    temp = pd.concat([temp,fe,fe_contemp],axis=1)
     controls = list(fe.columns)
-    controls.remove(0.0)
-    controls =controls
+    controls.remove('l0')
+    controls_contemp = list(fe_contemp.columns)
+    controls_contemp.remove('c0')
 
 
     const = ['const']
-    const = []
     m_quantile = temp.groupby('form_date')['market_equity'].rank(pct=True)
-    ind = m_quantile<1.01
-    temp = temp.loc[ind,:]
-
     temp['market_equity'] = np.log(temp['market_equity'])
     temp['const'] = 1.0
     for v in variable:
         temp[v] = (temp[v] - temp[v].mean()) / temp[v].std()
-    m = sm.Logit(temp['covered'], temp[variable + const+controls]).fit(cov_type='cluster', cov_kwds={'groups': temp['form_date']})
 
-    print(m.summary())
+    table = didi.TableReg(rename_dict=tr_dict,hide_list=const+controls+controls_contemp)
+    # table = didi.TableReg()
 
+    m1 = sm.Logit(temp['covered'], temp[variable + const]).fit(cov_type='cluster', cov_kwds={'groups': temp['form_date']})
+    m2 = sm.Logit(temp['covered'], temp[variable +controls]).fit(cov_type='cluster', cov_kwds={'groups': temp['form_date']})
+    m3 = sm.Logit(temp['covered'], temp[variable +controls_contemp]).fit(cov_type='cluster', cov_kwds={'groups': temp['form_date']})
+
+    table.add_reg(m1,blocks=[{'Lagged Coverage FE':'NO','Cont. Coverage FE':'NO','Constant':'YES'}])
+    table.add_reg(m2,blocks=[{'Lagged Coverage FE':'YES','Cont. Coverage FE':'NO','Constant':'NO'}])
+    table.add_reg(m3,blocks=[{'Lagged Coverage FE':'NO','Cont. Coverage FE':'YES','Constant':'NO'}])
+
+    save_dir = Constant.TRI_PAPER
+    os.makedirs(save_dir,exist_ok=True)
+    table.save_tex(save_dir=save_dir+'first_reg.tex')
 
 
 

@@ -34,6 +34,12 @@ if __name__ == "__main__":
     par.enc.opt_model_type = OptModelType.OPT_13b
     if args.legal == 1:
         par.enc.news_source = NewsSource.EIGHT_LEGAL
+        if args.ati == 1:
+            par.enc.news_source = NewsSource.EIGHT_LEGAL_ATI
+            print('Load from ATI',flush=True)
+        if args.ati == 2:
+            par.enc.news_source = NewsSource.EIGHT_LEGAL_ATI_TRAIN
+            print('Load from ATI 2',flush=True)
     if args.ref == 1:
         par.enc.news_source = NewsSource.NEWS_REF
     if args.news_on_eight == 1:
@@ -43,7 +49,7 @@ if __name__ == "__main__":
     load_dir = par.get_training_dir() # the ouptut of merging the vectors
 
 
-    print('Start loading Df', flush=True)
+    print('Start loading Df from',load_dir, flush=True)
     df = pd.read_pickle(load_dir + 'main_df.p')
     print('Loaded Df', flush=True)
     if args.legal == 1:

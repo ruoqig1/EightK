@@ -48,7 +48,6 @@ def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:
     # get save dir
     save_dir = par.get_vec_process_dir()
 
-    model = EncodingModel(par)
 
     res = df[id_col].copy()
     res['vec_last'] = np.nan
@@ -71,6 +70,7 @@ def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:
             # system to do in a few batch
             index_todo = np.array_split(save_chunk_of_index[save_id], int(np.ceil(len(save_chunk_of_index[save_id]) / batch_size)))
             for ind in tqdm.tqdm(index_todo, f'Tokenise {save_dest}'):
+                model = EncodingModel(par)
                 txt_list_raw = list(df.loc[ind, 'txt'].values)
                 txt_list = []
                 for i in range(len(txt_list_raw)):
@@ -80,10 +80,12 @@ def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:
                         txt_list.append(txt_list_raw[i].encode('utf-8', 'ignore').decode('utf-8'))
                 last_token_hidden_stage, mean_hidden_stage = model.get_hidden_states_para(texts=txt_list)
                 res.loc[ind, 'vec_last'] = pd.Series(last_token_hidden_stage, index=ind)
+                # print('Mean Doc Size',np.mean([len(x) for x in txt_list]),flush=True)
                 if par.enc.opt_model_type != OptModelType.BOW1:
                     res.loc[ind, 'vec_mean'] = pd.Series(mean_hidden_stage, index=ind)
+                gc.collect()
             res.dropna().to_pickle(save_dest)
-            print(res.dropna().head())
+            # print(res.dropna().head())
             res = res.loc[pd.isna(res.values)]
             gc.collect()
 # python vec_main.py 26 --legal=0 --eight=0 --news=1 --ref=1 --bow=1

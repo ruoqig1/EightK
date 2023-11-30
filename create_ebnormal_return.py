@@ -11,32 +11,6 @@ from statsmodels import api as sm
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-# def load_and_preprocess(par):
-#     data = Data(par)
-#     df =data.load_crsp_all()
-#     df= df.sort_values(['permno', 'date']).reset_index(drop=True)
-#     # load the event to comput
-#     per = data.load_some_relevance_icf()
-#     per['date'] = pd.to_datetime(per['adate'])
-#     per = per.dropna(subset='date')
-#     per = per.loc[per['date'].dt.year>=2004,:]
-#     per['permno']=per['permno'].astype(int)
-#     ev = per[['date','permno']].dropna().drop_duplicates()
-#     ev['ev']= True
-#
-#     # load ff and merge
-#     ff = data.load_ff5()
-#     df = df.merge(ff)
-#     df['ret']-=df['rf']
-#     df = df.merge(ev)
-#     df['ev'] = df['ev'].fillna(False)
-#     print(df['ev'].sum(),ev.shape,flush=True)
-#
-#     df = df.sort_values(['permno','date'])
-#     df = df.reset_index(drop=True)
-#     df['one'] = 1.0
-#     return df
-
 
 def load_and_preprocess_v2(par):
     data = Data(par)
@@ -48,7 +22,7 @@ def load_and_preprocess_v2(par):
     per = per.dropna(subset='date')
     per = per.loc[per['date'].dt.year>=2004,:]
     per['permno']=per['permno'].astype(int)
-    ev = per[['date','permno']].dropna().drop_duplicates()
+    ev = per[['date','permno','form_id']].dropna().drop_duplicates()
     ev['ev']= True
 
     # load ff and merge
@@ -102,7 +76,7 @@ if __name__ == "__main__":
     data = Data(par)
     df = load_and_preprocess_v2(par)
 
-    ev_window = 60
+    ev_window = 20
     gap_window = 50
     rolling_window = 100
     min_rolling = 70
@@ -120,10 +94,8 @@ if __name__ == "__main__":
     mkt_col = ['mktrf','smb','hml']
     name = 'abn_ev3_monly.p'
 
-
-
-    mkt_col = ['mktrf','smb','hml','rmw','cma','umd']
-    name = 'abn_ev6_long_monly.p'
+    mkt_col = ['mktrf','smb','hml','rmw','cma','umd','one']
+    name = 'abn_ev6_long.p'
 
 
 
@@ -139,6 +111,9 @@ if __name__ == "__main__":
 
     res['abs_abret'] = res['abret'].abs()
     res.to_pickle(data.p_dir + name)
+
+   # res = pd.read_pickle(data.p_dir + name)
+
 
     print(res)
     print('avg beta',res['beta'].mean())

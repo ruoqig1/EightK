@@ -9,7 +9,7 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=128G
+#SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
 #SBATCH --time=0-10:0:00
 
@@ -24,4 +24,4 @@ module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 vec_merge.py --legal=0 --eight=0 --news_on_eight=1
+python3 vec_merge.py --legal=1 --eight=1 --news_on_eight=0 --ati=2

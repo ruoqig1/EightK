@@ -42,7 +42,6 @@ def filter_items(x):
 class Data:
     def __init__(self, par: Params):
         self.par = par
-
         self.raw_dir = par.data.base_data_dir + '/raw/'
         self.p_dir = par.data.base_data_dir + '/p/'
         self.p_eight_k_clean = par.data.base_data_dir + '/cleaned/eight_k_first_process/'
@@ -645,11 +644,16 @@ class Data:
             df = pd.read_pickle(self.p_dir+'load_return_for_nlp_on_eightk.p')
         return df
 
-    def load_abn_return(self,model = 1):
+    def load_abn_return(self,model = 1, with_alpha = False):
         if model == 1:
+            df = pd.read_pickle(self.p_dir + 'abn_ev_m.p')
+        if model == 2:
             df = pd.read_pickle(self.p_dir + 'abn_ev_monly.p')
         elif model == 6:
-            df = pd.read_pickle(self.p_dir + 'abn_ev6_monly.p')
+            if with_alpha:
+                df = pd.read_pickle(self.p_dir + 'abn_ev6_long.p')
+            else:
+                df = pd.read_pickle(self.p_dir + 'abn_ev6_monly.p')
         elif model == 7:
             df = pd.read_pickle(self.p_dir + 'abn_ev6_long_monly.p')
         elif model == 3:
@@ -908,6 +912,89 @@ class Data:
         else:
             df =pd.read_pickle(self.p_dir+'load_ati_cleaning_df.p')
         return df
+
+    def load_ati_cleaning_df_long(self,reload = False):
+        if reload:
+            df = pd.read_csv(self.raw_dir+'currReportsPanel.csv')
+            df = df.loc[df['crsp']==1,:]
+            ind = df.groupby(['accessionNumber','acceptanceDate'])['avgVol'].transform('max') == df['avgVol']
+            df  =df.loc[ind,:].reset_index(drop=True)
+            df = df[['acceptanceDate','accessionNumber','cik','permno','mktEquityEvent','avgVol']]
+            df = df.rename(columns={'acceptanceDate':'adate','accessionNumber':'form_id','mktEquityEvent':'mcap_e','avgVol':'avg_vol'})
+            df['adate'] = pd.to_datetime(df['adate'])
+            df['permno'] = df['permno'].astype(int)
+            df.to_pickle(self.p_dir+'load_ati_cleaning_df_long.p')
+        else:
+            df =pd.read_pickle(self.p_dir+'load_ati_cleaning_df_long.p')
+        return df
+
+    def load_icf_ati_filter(self,reload = False,training = False):
+        if reload:
+            # build year col
+            df = pd.read_csv(self.raw_dir + 'lcf_current.csv')
+            df['acceptanceDatetime'] = pd.to_datetime(df['acceptanceDatetime'].astype(str).str[:-2], format='%Y%m%d%H%M%S', errors='coerce')
+            df['atime'] = df['acceptanceDatetime'].dt.time
+            df['adate'] = df['acceptanceDatetime'].dt.date
+            df['adate'] = pd.to_datetime(df['adate'])
+            # df['fdate'] = pd.to_datetime(df['filingDate'], format='%Y%m%d')
+            df['form_id'] = df['accessionNumber']
+
+            df = df.dropna(subset=['items'])
+            df['items'] = df['items'].apply(filter_items)
+
+            if training:
+                ati = self.load_ati_cleaning_df_long()
+            else:
+                ati = self.load_ati_cleaning_df()
+            ati['form_id'] = ati['form_id'].apply(lambda x: x.replace('-', ''))
+            df['form_id'] = df['form_id'].apply(lambda x: x.replace('-', ''))
+            df = df[['adate', 'form_id', 'items','atime']].explode('items').reset_index(drop=True)
+            df = df.dropna()
+            df['atime'] = df['atime'].apply(lambda x: int(str(x).replace(':','')))
+            df = df.merge(ati)
+
+            rav = self.load_ravenpack_all()
+            rav['news0'] = 1 * (rav['relevance'] > 0)
+            rav['permno'] = rav['permno'].astype(int)
+            rav = rav.rename(columns={'rdate': 'adate'})
+            # rav = rav.groupby(['permno', 'adate'])['news0'].max().reset_index()
+            rav['rtime'] = rav['rtime'].apply(lambda x: int(str(x).split('.')[0].replace(':','')))
+            rav = rav.loc[rav['news0']==1,:].groupby(['permno', 'adate'])['rtime'].min().reset_index()
+            rav['news0']=1.0
+            df = df.merge(rav, how='left')
+            df['news0'] = df['news0'].fillna(0.0)
+
+            # add the returns for trainings
+            ret = self.load_abn_return(1)
+            ret = ret.loc[ret['evttime'].between(-1, 1), :]
+            ret = ret.groupby(['permno', 'date'])['ret', 'abret'].mean()
+            ret = ret.reset_index()
+            df = df.rename(columns={'adate': 'date'}).merge(ret)
+            if training:
+                df.to_pickle(self.p_dir+'load_icf_ati_filter_training.p')
+            else:
+                df.to_pickle(self.p_dir+'load_icf_ati_filter.p')
+        else:
+            if training:
+                df = pd.read_pickle(self.p_dir+'load_icf_ati_filter_training.p')
+            else:
+                df = pd.read_pickle(self.p_dir+'load_icf_ati_filter.p')
+        return df
+
+    def load_logs_tot(self):
+        df = pd.read_pickle(self.p_dir + 'log_tot_down.p')
+        return df
+    def load_logs_io(self):
+        df = pd.read_pickle(self.p_dir + 'log_ip.p')
+        return df
+    def load_logs_ev_study(self):
+        df = pd.read_pickle(self.p_dir + 'log_ev_study.p')
+        return df
+    def load_logs_high(self):
+        df = pd.read_pickle(self.p_dir + 'log_high.p')
+        return df
+
+
 if __name__ == "__main__":
     try:
         grid_id = int(sys.argv[1])
@@ -917,5 +1004,4 @@ if __name__ == "__main__":
         grid_id = -2
 
     self = Data(Params())
-    # df = self.load_return_for_nlp_on_eightk(True)
-
+    # self.load_icf_ati_filter(True,training=True)

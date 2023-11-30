@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+scp edgar_log_clean/*.py ADIDISHEIM@vm-172-26-151-140.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/
 scp *.py ADIDISHEIM@vm-172-26-151-140.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/
 scp utils_local/*.py ADIDISHEIM@vm-172-26-151-140.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/utils_local/
 scp scripts/slurm_vm/* ADIDISHEIM@vm-172-26-151-140.desktop.cloud.unimelb.edu.au:/home/unimelb.edu.au/adidisheim/EightK/
