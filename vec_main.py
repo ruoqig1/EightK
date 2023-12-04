@@ -95,7 +95,7 @@ def drop_already_process_text_from_df(df, par):
 
 
 def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
-    batch_size = 10
+    batch_size = 20
     if par.enc.opt_model_type == OptModelType.BOW1:
         save_size = 10000
     else:
@@ -141,6 +141,10 @@ if __name__ == "__main__":
             par.enc.opt_model_type = OptModelType.OPT_125m
     if args.bow == 1:
         par.enc.opt_model_type = OptModelType.BOW1
+    else:
+        # if not encoding in bow, we now use the pytorch setup
+        par.enc.framework = Framework.TENSORFLOW
+        par.enc.opt_model_type = OptModelType.OPT_125m
 
     if args.eight == 1:
         if args.legal == 1:
@@ -173,6 +177,8 @@ if __name__ == "__main__":
             par.enc.news_source = NewsSource.NEWS_REF
             # par.enc.opt_model_type = OptModelType.OPT_125m
             id_col, save_size, batch_size, year, df = load_and_process_news_one_stock_ref_or_third(par, args, 'ref')
+
+
         else:
             print('START NEWS, THIRD', flush=True)
             par.enc.news_source = NewsSource.NEWS_THIRD

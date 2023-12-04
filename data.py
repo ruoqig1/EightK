@@ -19,7 +19,7 @@ import re
 from didipack import PandasPlus
 import wrds
 import didipack as didi
-
+import pytz
 
 def load_some_enc(par:Params):
     load_dir_and_file = par.get_vec_process_dir(merged_bow=True)
@@ -349,6 +349,18 @@ class Data:
             for i in range(10):
                 t = self.load_ravenpack_chunk(i)
                 df = pd.concat([df,t],axis=0)
+
+
+            # Combine rdate and rtime into a single datetime column
+            df['datetime_utc'] = pd.to_datetime(df['rdate'].astype(str) + ' ' + df['rtime'])
+
+            # Convert to Eastern Time Zone
+            eastern = pytz.timezone('US/Eastern')
+            df['datetime_etz'] = df['datetime_utc'].dt.tz_localize('UTC').dt.tz_convert(eastern)
+            df['rdate'] = pd.to_datetime(df['datetime_etz'].dt.date)
+            df['rtime'] = df['datetime_etz'].dt.time
+
+            df = df.drop(columns=['datetime_etz','datetime_utc'])
             df.to_pickle(self.p_dir+'raven_full.p')
         else:
             df = pd.read_pickle(self.p_dir+'raven_full.p')
@@ -984,7 +996,7 @@ class Data:
     def load_logs_tot(self):
         df = pd.read_pickle(self.p_dir + 'log_tot_down.p')
         return df
-    def load_logs_io(self):
+    def load_logs_ip(self):
         df = pd.read_pickle(self.p_dir + 'log_ip.p')
         return df
     def load_logs_ev_study(self):
@@ -992,6 +1004,9 @@ class Data:
         return df
     def load_logs_high(self):
         df = pd.read_pickle(self.p_dir + 'log_high.p')
+        return df
+    def load_logs_ip_small(self):
+        df = pd.read_pickle(self.p_dir + 'log_ip_small.p')
         return df
 
 
@@ -1004,4 +1019,4 @@ if __name__ == "__main__":
         grid_id = -2
 
     self = Data(Params())
-    # self.load_icf_ati_filter(True,training=True)
+    self.load_icf_ati_filter(True,training=True)

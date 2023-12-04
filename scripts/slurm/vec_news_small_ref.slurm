@@ -27,5 +27,4 @@ module load TensorFlow/2.11.0-CUDA-11.7.0-deeplearn
 source  ~/venvs/nlp_gpu/bin/activate
 
 python3 vec_main.py ${SLURM_ARRAY_TASK_ID} --legal=0 --eight=0 --news=1 --ref=1 --bow=0 --small=1
-python3 vec_main.py 0 --legal=0 --eight=0 --news=1 --ref=1 --bow=0 --small=1
 

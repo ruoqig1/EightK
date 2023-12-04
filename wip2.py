@@ -1,155 +1,118 @@
+import gc
+import os
+
+import pandas as pd
+import pyperclip
+import tqdm
+
+from parameters import *
+from data import Data
 import didipack as didi
 from matplotlib import pyplot as plt
-from data import Data
-from parameters import *
 import seaborn as sns
-# Function to convert to HH:MM:SS format
-def convert_time(t):
-    t_str = str(t).zfill(6)  # Convert to string and ensure 6 characters
-    if pd.isna(t):
-        return f"00:00:00"
-    else:
-        return f"{t_str[0:2]}:{t_str[2:4]}:{t_str[4:6]}"
-
-if __name__ == '__main__':
-    args = didi.parse()
-    par = Params()
-    data = Data(par)
-    save_dir = Constant.EMB_PAPER
-    df = data.load_logs_high()
-    df = df.rename(columns={'accession':'form_id'})
-    df['form_id'] = df['form_id'].apply(lambda x: str(x).replace('-',''))
-    ati = data.load_icf_ati_filter()
-
-    df =df.merge(ati)
-
-    df['time'] = df['time'].apply(convert_time)
-    df['atime'] = df['atime'].apply(convert_time)
-    df['rtime'] = df['rtime'].apply(convert_time)
-
-    df['time'] = pd.to_timedelta(df['time'],errors='coerce')
-    df['rtime'] = pd.to_timedelta(df['rtime'],errors='coerce')
-    df['atime'] = pd.to_timedelta(df['atime'],errors='coerce')
-
-    # total number of covered arround covered date
-    df['dist'] = (df['time']-df['rtime']).dt.total_seconds() / 3600
-    ind = df['dist'].between(-24,24)
-    temp = df.loc[ind,:]
-    temp = temp.loc[df['news0']==1,:].copy()
-    temp['dist'] = temp['dist'].round()
-    temp = temp.groupby(['dist', 'permno','date'])['ip'].sum().reset_index()
-    temp = temp.groupby(['dist','permno'])['ip'].mean().reset_index()
-    temp.groupby(['dist'])['ip'].median().plot()
-    plt.xlabel('Hours-Form Publication Hours')
-    plt.ylabel('Mean Number of Views')
-    plt.grid()
-    plt.tight_layout()
-    plt.savefig(save_dir+'logs_median_per_publication')
-    plt.show()
+from didipack import PandasPlus, PlotPlus
+from scipy.stats import ttest_ind
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import sys
+from utils_local.zip import decompress_gz_file
+import json
+import glob
+import itertools
+import re
+from utils_local.llm import EncodingModel
+from utils_local.zip import decompress_gz_file, unzip_all
+import torch
 
 
-    # percentage of downlaod for covered, arround covered time
-    df['dist'] = (df['time']-df['rtime']).dt.total_seconds() / 3600
-    ind = df['dist'].between(-24,24)
-    temp = df.loc[ind,:]
-    temp = temp.loc[df['news0']==1,:].copy()
-    temp['dist'] = temp['dist'].round()
-    temp = temp.groupby(['dist', 'permno','date'])['ip'].sum().reset_index()
-    tot_down = temp.groupby(['permno','date'])['ip'].transform('sum')
-    temp['ip']/=tot_down
-    temp = temp.loc[tot_down>=100,:].groupby(['dist','permno'])['ip'].mean().reset_index()
-    temp.groupby(['dist'])['ip'].mean().plot()
-    plt.title(f'MCAP all')
-    plt.grid()
-    plt.xlabel('Hours-Form Publication Hours')
-    plt.ylabel('Mean Percentage Of View')
-    plt.tight_layout()
-    plt.savefig(save_dir+'logs_perc_view_per_publication')
-    plt.show()
-
-    # failed first attempt by time
-    df['covered_now'] = ((df['news0']==1) & (df['time']>=df['atime']))*1
-
-    df['dist'] = (df['time']-df['atime']).dt.total_seconds() / 3600
-    ind = df['dist'].between(-24,24)
-    temp = df.loc[ind,:].copy()
-    temp['type'] = 'uncovered'
-    temp.loc[temp['news0']==1,'type']='to be covered'
-    temp.loc[(temp['news0']==1) & (df['time']>=df['rtime']),'type']='covered now'
-
-    temp['dist'] = temp['dist'].round()
-    temp = temp.groupby(['dist', 'permno','date', 'type'])['ip'].sum().reset_index()
-    temp = temp.groupby(['dist','permno','type'])['ip'].median().reset_index().pivot(columns='type',index=['dist','permno'],values='ip')
-    temp =temp/temp[['uncovered']].values
-    temp = temp.dropna().reset_index()
-    temp =temp.drop(columns='permno').groupby('dist').mean()
-    temp.plot()
-
-    plt.title(f'MCAP all')
-    plt.grid()
-    plt.show()
 
 
-    # run on the sample that has some coverage but all before coverage!
-    df['dist'] = (df['time']-df['atime']).dt.total_seconds() / 3600
-    ind = df['dist'].between(-24, 24)
-    temp = df.loc[ind,:].copy()
-    ind = ((temp['news0']==0)) | ((temp['news0']==1) & (df['time']<df['rtime']))
-    temp = temp.loc[ind,:].copy()
 
-    temp['dist'] = temp['dist'].round()
-    # temp['dist'] = 1
-    temp = temp.groupby(['dist', 'permno','date', 'news0'])['ip'].sum().reset_index()
-    temp = temp.groupby(['dist','permno','news0'])['ip'].mean().reset_index().pivot(columns='news0',index=['dist','permno'],values='ip')
+def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:int, par:Params, year:int, start_save_id = 0):
+    """
+    Vectorize textual data in batches and save the results.
 
-    hist_per_permno = temp.groupby('permno').mean()
-    hist_per_permno['ratio'] = hist_per_permno[1.0]/hist_per_permno[0.0]
-    hist_per_permno = hist_per_permno.dropna()
-    hist_per_permno['ratio'].clip(-5,5).hist(bins=100)
-    plt.grid()
-    plt.xlabel('Clipped Ratio To Be Covered/Uncovered')
-    plt.tight_layout()
-    plt.savefig(save_dir+'logs_hist_to_be_covered')
-    plt.show()
-    plt.show()
+    This function takes a DataFrame containing text data, transforms the text into vectors using a given model,
+    and saves these vectors in batches. The saving and processing are both done in chunks to accommodate large datasets.
 
-    temp['ratio'] =temp[1.0]/temp[0.0]
-    temp = temp.dropna().reset_index()
-    temp.drop(columns='permno').groupby('dist')['ratio'].median().plot()
-    plt.title(f'MCAP all')
-    plt.grid()
-    plt.xlabel('Hours-Form Publication Hours')
-    plt.ylabel('Mean Ratio To Be Covered/Uncovered')
-    plt.tight_layout()
-    plt.savefig(save_dir+'logs_ts_to_be_covered')
-    plt.show()
+    Parameters:
+    id_col (tuple): Column(s) to be used as the unique identifier for the DataFrame.
+    df (pd.DataFrame): The DataFrame containing text data to be vectorized.
+    save_size (int): The number of rows per saved file.
+    batch_size (int): The number of rows to be processed in each batch. (in the GPU)
+    par (Params): A custom Params object that contains directory information.
+    year (int): Year information, used for naming saved files.
+    start_id (int): default 0, a value to say the batch number minimum to save in
+    Returns:
+    None. Saves vectorized data as pickle files in the directory specified by the Params object.
+    """
+
+    # get save dir
+    save_dir = par.get_vec_process_dir()
+    print('about to save in',save_dir,flush=True)
 
 
-    # try to estimate percentage downloaded in the hours of, publciaiton, coverage
-    df['dist_to_coverage'] = ((df['time'] - df['rtime']).dt.total_seconds() / 3600).round()
-    df['dist_to_form'] = ((df['time'] - df['atime']).dt.total_seconds() / 3600).round()
-    df['hour_type'] = 'normal'
-    df.loc[df['dist_to_form']==0,'hour_type'] = 'Publication'
-    df.loc[df['dist_to_coverage']==0,'hour_type'] = 'Coverage'
-    df.loc[(df['dist_to_coverage']==0) & (df['dist_to_form']==0),'hour_type'] = 'Coverage & Publication'
+    res = df[id_col].copy()
+    res['vec_last'] = np.nan
+    # if par.enc.opt_model_type != OptModelType.BOW1:
+    #     res['vec_mean'] = np.nan
 
-    ind = df['dist_to_form'].between(-24, 24)
-    temp = df.loc[ind, :]
-    temp = temp.groupby(['hour_type','permno','date','news0'])['ip'].sum().reset_index()
-    tot_down = temp.groupby(['permno','date','news0'])['ip'].transform('sum')
-    # temp['ip']/= tot_down
-    temp = temp.loc[tot_down>100,:].groupby(['news0','hour_type'])['ip'].sum().reset_index()
-    temp['ip'] = temp['ip']/temp.groupby('news0')['ip'].transform('sum')
+    res = res.set_index(id_col)
+    df = df.set_index(id_col).sort_index()
 
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x='news0', y='ip', hue='hour_type', data=temp)
+    res_mean = res.copy()
+    model = EncodingModel(par)
+    save_chunk_of_index = np.array_split(df.index, int(np.ceil(df.shape[0] / save_size)))
+    for save_id in range(len(save_chunk_of_index)):
+        save_dest = save_dir + f'{year}_{int(save_id + start_save_id)}.p'
+        save_dest_mean = save_dir + f'{year}_{int(save_id + start_save_id)}_mean.p'
+        if os.path.exists(save_dest):
+            print(save_dest, 'already processed', flush=True)
+        else:
+            print('#'*50)
+            print('Start working on',save_dest, f'({len(save_chunk_of_index)})')
+            print('#'*50,flush=True)
+            # system to do in a few batch
+            index_todo = np.array_split(save_chunk_of_index[save_id], int(np.ceil(len(save_chunk_of_index[save_id]) / batch_size)))
+            last_mat = []
+            mean_mat = []
 
-    # Adding titles and labels
-    plt.title('IP per News and Hour Type')
-    plt.xlabel('News')
-    plt.ylabel('IP')
-    plt.xlabel('Uncovered/Covered')
-    plt.ylabel('Percentage of Total Download')
-    plt.tight_layout()
-    plt.savefig(save_dir+'logs_bar')
-    plt.show()
+            for ind in tqdm.tqdm(index_todo, f'Tokenise {save_dest}'):
+                if batch_size >1:
+                    txt_list_raw = list(df.loc[ind, 'txt'].values)
+                    txt_list = []
+                    for i in range(len(txt_list_raw)):
+                        if txt_list_raw[i] in [None, '']:
+                            txt_list.append(' ')
+                        else:
+                            txt_list.append(txt_list_raw[i].encode('utf-8', 'ignore').decode('utf-8'))
+                    last_token_hidden_stage, mean_hidden_stage = model.get_hidden_states_para(texts=txt_list)
+                    res.loc[ind, 'vec_last'] = pd.Series(last_token_hidden_stage, index=ind)
+                    if par.enc.opt_model_type != OptModelType.BOW1:
+                        res.loc[ind, 'vec_mean'] = pd.Series(mean_hidden_stage, index=ind)
+                else:
+                    txt = df.loc[ind, 'txt'].values[0]
+                    txt =txt.encode('utf-8', 'ignore').decode('utf-8')
+                    last_token_hidden_stage, mean_hidden_stage = model.get_hidden_states(txt)
+                    # last_mat.append(last_token_hidden_stage)
+                    # mean_mat.append(mean_hidden_stage)
+                    # res.loc[ind, 'vec_last'] = 'done'
+                    # START PROBLEM
+                    # breakpoint()
+                    res.loc[ind, 'vec_last'] = pd.Series([last_token_hidden_stage], index=ind)
+                    res_mean.loc[ind, 'vec_last'] = pd.Series([mean_hidden_stage], index=ind)
+                    # if par.enc.opt_model_type != OptModelType.BOW1:
+                    #     res.loc[ind, 'vec_mean'] = pd.Series([mean_hidden_stage], index=ind)#
+                # if par.enc.framework == Framework.PYTORCH:
+                #     torch.cuda.empty_cache()
+            res.dropna().to_pickle(save_dest)
+            res = res.loc[pd.isna(res.values)]
+            res_mean.dropna().to_pickle(save_dest_mean)
+            res_mean = res_mean.loc[pd.isna(res_mean.values)]
+            # END PROBLEM
+            # res.dropna()['vec_last'].iloc[0]
+            # res.dropna()['vec_mean'].iloc[0]
+
+if __name__ == "__main__":
+    pass
+

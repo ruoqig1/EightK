@@ -19,6 +19,7 @@ pip install yfinance
 pip install nltk==3.8.1
 pip install transformers
 pip install pyperclip
+pip install torch
 
 # if not through local modules!
 pip install tensorflow==2.11.0

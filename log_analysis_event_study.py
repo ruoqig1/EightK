@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
 
 
-    temp.loc[temp['dist']<41, :].groupby('dist')[[0.0,1.0]].mean().plot()
+    temp.loc[temp['dist']<41, :].groupby('dist')[[0.0,1.0]].mean().cumsum().plot()
     plt.title(f'MCAP all')
     plt.grid()
     plt.show()
@@ -118,6 +118,7 @@ if __name__ == '__main__':
 
     plt.savefig(save_dir + 'log_days_per_items_ev.png')
     plt.show()
+
 
 
 

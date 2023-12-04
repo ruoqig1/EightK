@@ -18,6 +18,10 @@ import hashlib
 # Enum
 ##################
 
+class Framework(Enum):
+    PYTORCH = 'pytorch'
+    TENSORFLOW = 'tensorflow'
+
 class NewsSource(Enum):
     WSJ = 'wsj'
     EIGHT_LEGAL ='eight_legal'
@@ -81,12 +85,15 @@ class Constant:
         # main_dir = '/media/antoine/ssd_ntfs//wsj_openai/'
         MAIN_DIR = './'
         HUGGING_DIR = None
+        HUGGING_DIR_TORCH = None
     elif socket.gethostname() in ['rdl-7enbvm.desktop.cloud.unimelb.edu.au']:
         MAIN_DIR = '/mnt/layline/project/eightk/'
         HUGGING_DIR = None
+        HUGGING_DIR_TORCH = None
     else:
         MAIN_DIR = '/data/gpfs/projects/punim2039/EightK/'
         HUGGING_DIR = '/data/gpfs/projects/punim2039/hugging/'
+        HUGGING_DIR_TORCH = '/data/gpfs/projects/punim2039/hugging_torch/'
 
     HOME_DIR = os.path.expanduser("~")
     EMB_PAPER = os.path.join(HOME_DIR, 'Dropbox/Apps/Overleaf/052-EMB/res/')
@@ -739,6 +746,7 @@ class EncodingParams:
     def __init__(self):
         self.opt_model_type = OptModelType.OPT_125m
         self.news_source = NewsSource.EIGHT_LEGAL
+        self.framework = None
 
         #params related to running the encoding
         self.nb_chunks = 100
@@ -824,7 +832,10 @@ class Params:
     def get_vec_process_dir(self, merged_bow = False, index_permno_only = False):
         # create the directory
         if not merged_bow:
-            save_dir = Constant.MAIN_DIR + f'data/vec_process/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+            if self.enc.framework is None:
+                save_dir = Constant.MAIN_DIR + f'data/vec_process/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
+            else:
+                save_dir = Constant.MAIN_DIR+f'data/vec_process_news/{self.enc.opt_model_type.name}/'+self.dict_to_string_for_dir(self.enc.__dict__,old_style=True)+'/'
             os.makedirs(save_dir, exist_ok=True)
         else:
             save_dir = Constant.MAIN_DIR + f'data/vec_merged_df/'
@@ -833,6 +844,7 @@ class Params:
                 save_dir += f'df_{self.enc.opt_model_type.name}_{self.enc.news_source.name}_index.p'
             else:
                 save_dir += f'df_{self.enc.opt_model_type.name}_{self.enc.news_source.name}.p'
+
         return save_dir
 
     def save_model_params_in_main_file(self):

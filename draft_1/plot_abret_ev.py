@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 import didipack as didi
 from data import Data
 from didipack import PandasPlus
+from utils_local.plot import plot_ev
 
 def print_size(df,step):
     print(f'### Step {step}')
