@@ -23,7 +23,8 @@ if __name__ == "__main__":
     use_rav_cov_news_v2 = False
     nb_factors = 7
     winsorise_ret = -1
-    winsorise_ret = -1
+    news_columns = 'news0' # 'news0_nr','news_with_time_nr','news_with_time'
+    news_columns = 'news_with_time'
     do_cumulate = True
     # t_val = 1.96
     t_val = 2.58
@@ -36,17 +37,18 @@ if __name__ == "__main__":
     sigma_col = 'sigma_ret_train' if start_ret == 'ret' else 'sigma_ra'
     model_index = 1 # 2 is our main 1 is ok with atis...
     # for model_index in range(12):
-    for model_index in [2]:
+    for model_index in range(36):
         if use_relase:
             save_dir = Constant.EMB_PAPER + 'release/'
         else:
             save_dir = Constant.EMB_PAPER + 'news/'
         if use_ati:
-            save_dir = 'res/ati_plot_3/'
+            # save_dir = 'res/ati_plot_3/'
+            save_dir = 'res/ati_plot_4/'
         os.makedirs(save_dir,exist_ok=True)
         if use_ati:
             print('load new')
-            load_dir = 'res/model_tf_ati_3/'
+            load_dir = 'res/model_tf_ati_news_var/'
             os.listdir(load_dir)
             df = pd.read_pickle(load_dir + f'new_{model_index}.p')
             par = Params()
@@ -55,7 +57,11 @@ if __name__ == "__main__":
             df, par = data.load_ml_forecast_draft_1()
         t=data.load_ati_cleaning_df()[['form_id','permno']].drop_duplicates()
         t['form_id'] = t['form_id'].apply(lambda x: x.replace('-',''))
+        more_news = data.load_icf_ati_filter(False,False)
+        # more_news=more_news[['date','permno','news0_nr','news_with_time_nr','news_with_time']].drop_duplicates()
+        more_news=more_news[['date','permno','news_with_time']].drop_duplicates()
         df = df.drop(columns='permno').merge(t)
+        df = df.merge(more_news)
 
         print(df.groupby(df['date'].dt.year)['permno'].count())
         if use_relase:
@@ -63,7 +69,7 @@ if __name__ == "__main__":
         else:
             df['release'] = 1
 
-        df= df.groupby(['date','permno','news0','release'])['pred_prb','abret'].mean().reset_index()
+        df= df.groupby(['date','permno',news_columns,'release'])['pred_prb','abret'].mean().reset_index()
         df['pred']  = np.sign(df['pred_prb']-0.5)
         # df['pred']  = np.sign(df['pred_prb']-df['pred_prb'].mean())
         # df['pred']  = np.sign(df['pred_prb']-df.groupby(df.date.dt.year)['pred_prb'].transform('mean'))
@@ -71,10 +77,10 @@ if __name__ == "__main__":
         if use_rav_cov_news_v2:
             rav = data.load_rav_coverage_split_by(False)
             df = df.merge(rav,how='left').fillna(0.0)
-            df['news0'] = 1.0*(df['article']>0)
+            df[news_columns] = 1.0*(df['article']>0)
 
         if use_relase:
-            df['news0'] = df['release']
+            df[news_columns] = df['release']
         df['pred'] = df['pred'].replace({0:1})
 
         df['acc'] = df['pred']==np.sign(df['abret'])
@@ -95,7 +101,7 @@ if __name__ == "__main__":
                 ev.loc[ind,'ret'] = PandasPlus.winzorize_series(ev.loc[ind,'ret'], winsorise_ret)
 
 
-        df=df[['pred','news0','date','permno']].merge(ev)
+        df=df[['pred',news_columns,'date','permno']].merge(ev)
         df['year'] = df['date'].dt.year
         df = df.merge(data.load_mkt_cap_yearly())
 
@@ -109,7 +115,7 @@ if __name__ == "__main__":
 
         df['pred'].mean()
         ind_time = (df['evttime']>=-3) & (df['evttime']<= 40)
-        ind_time = (df['evttime']>=-1) & (df['evttime']<= 10)
+        ind_time = (df['evttime']>=-3) & (df['evttime']<= 15)
         # ind_time = (df['evttime']>=-1) & (df['evttime']<= 60)
 
 
@@ -123,10 +129,10 @@ if __name__ == "__main__":
         n_list = [False,True] if use_relase else [0,1]
         k = 0
         for n in n_list:
-            ind = df['news0']==n
+            ind = df[news_columns]==n
             k+=1
             if n == -1:
-                ind = df['news0']<=100
+                ind = df[news_columns]<=100
             m = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].mean().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
             s = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[sigma_col].mean().reset_index().pivot(columns=pred_col, index='evttime', values=sigma_col)
             c = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].count().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
@@ -139,9 +145,9 @@ if __name__ == "__main__":
         # LONG SHORT EV
         df['sign_ret'] = df[start_ret]*df[pred_col]
 
-        m = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].mean().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
-        s = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])[sigma_col].mean().reset_index().pivot(columns='news0', index='evttime', values=sigma_col)
-        c = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['sign_ret'].count().reset_index().pivot(columns='news0', index='evttime', values='sign_ret')
+        m = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])['sign_ret'].mean().reset_index().pivot(columns=news_columns, index='evttime', values='sign_ret')
+        s = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])[sigma_col].mean().reset_index().pivot(columns=news_columns, index='evttime', values=sigma_col)
+        c = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])['sign_ret'].count().reset_index().pivot(columns=news_columns, index='evttime', values='sign_ret')
         k+=1
         plt.subplot(2, 2, k)
         plot_ev(m,s,c,do_cumulate = True,label_txt = 'PR' if use_relase else 'Covered')
@@ -154,20 +160,20 @@ if __name__ == "__main__":
         df['w_ret2'] = df[start_ret]*df['mcap']
         long_short = []
         for pred in [-1,1]:
-            m = df.loc[ind_time & size_ind & (df[pred_col]==pred), :].groupby(['evttime', 'news0'])['w_ret2'].sum().reset_index().pivot(columns='news0', index='evttime', values='w_ret2')
-            norm = df.loc[ind_time & size_ind & (df[pred_col]==pred), :].groupby(['evttime', 'news0'])['mcap'].sum().reset_index().pivot(columns='news0', index='evttime', values='mcap')
+            m = df.loc[ind_time & size_ind & (df[pred_col]==pred), :].groupby(['evttime', news_columns])['w_ret2'].sum().reset_index().pivot(columns=news_columns, index='evttime', values='w_ret2')
+            norm = df.loc[ind_time & size_ind & (df[pred_col]==pred), :].groupby(['evttime', news_columns])['mcap'].sum().reset_index().pivot(columns=news_columns, index='evttime', values='mcap')
             m = m/norm
             long_short.append(m)
         m = long_short[1]-long_short[0]
-        s = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])[sigma_col].mean().reset_index().pivot(columns='news0', index='evttime', values=sigma_col)
-        c = df.loc[ind_time & size_ind, :].groupby(['evttime', 'news0'])['w_ret2'].count().reset_index().pivot(columns='news0', index='evttime', values='w_ret2')
+        s = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])[sigma_col].mean().reset_index().pivot(columns=news_columns, index='evttime', values=sigma_col)
+        c = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])['w_ret2'].count().reset_index().pivot(columns=news_columns, index='evttime', values='w_ret2')
         k+=1
         plt.subplot(2, 2, k)
         plot_ev(m,s,c,do_cumulate = True,label_txt = 'PR' if use_relase else 'Covered')
 
 
         # par.train.abny,par.train.l1_ratio, par.train.norm.name
-        n = f'abn{par.train.abny}l1{par.train.l1_ratio}norm{par.train.norm}'
+        n = f'abn{par.train.abny}l1{par.train.l1_ratio}norm{par.train.norm}, NEW {par.train.news_filter_training}'
 
         plt.title(n)
         plt.tight_layout()
@@ -176,6 +182,6 @@ if __name__ == "__main__":
         save_dest  =save_dir+f'{model_index}_{n}.png'
         plt.savefig(save_dest)
         print('saved to ',save_dest)
-        plt.show()
+        plt.close()
 
 

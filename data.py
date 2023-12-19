@@ -963,29 +963,24 @@ class Data:
             rav = self.load_ravenpack_all()
             rav['news0'] = 1 * (rav['relevance'] > 0)
             rav['permno'] = rav['permno'].astype(int)
-            rav['press_release'] = rav['news_type'] == 'PRESS-RELEASE'
+
             rav = rav.rename(columns={'rdate': 'adate'})
             # rav = rav.groupby(['permno', 'adate'])['news0'].max().reset_index()
             rav['rtime'] = rav['rtime'].apply(lambda x: int(str(x).split('.')[0].replace(':', '')))
             rav_main = rav.loc[rav['news0'] == 1, :].groupby(['permno', 'adate'])['rtime'].max().reset_index()
             rav_main['news0'] = 1.0
-            ind = (rav['news_type'] != 'PRESS-RELEASE')
-            rav_non_release = rav.loc[ind, :]
-            rav_non_release = rav_non_release.loc[(rav_non_release['news0'] == 1), :].groupby(['permno', 'adate'])['rtime'].max().reset_index()
-            rav_non_release['news0'] = 1.0
-            rav_non_release = rav_non_release.rename(columns={'rtime':'rtime_nr'})
-            rav_non_release['news0_nr'] = 1.0
-            rav_main['news0'] = 1.0
+            rav_futur = rav_main.copy().rename(columns={'rtime':'rtime_f','news0':'news0_f'})
+            # substrsact a day so that when merge it's the news of the next day
+            rav_futur['adate']=rav_futur['adate']-pd.DateOffset(days=1)
+
             df = df.merge(rav_main, how='left')
-            df = df.merge(rav_non_release, how='left')
+            df = df.merge(rav_futur, how='left')
             df['news0'] = df['news0'].fillna(0.0)
-            df['news0_nr'] = df['news0_nr'].fillna(0.0)
+            df['news0_f'] = df['news0_f'].fillna(0.0)
             df['news_with_time'] = df['news0'].values
             ind = (df['news0'] == 1) & (df['rtime'] < df['atime'])
             df.loc[ind, 'news_with_time'] = 0
-            df['news_with_time_nr'] = df['news0_nr'].values
-            ind = (df['news0_nr'] == 1) & (df['rtime_nr'] < df['atime'])
-            df.loc[ind, 'news_with_time_nr'] = 0
+
 
             # add the returns for trainings
             ret = self.load_abn_return(1)
@@ -1034,5 +1029,12 @@ if __name__ == "__main__":
         grid_id = -2
 
     self = Data(Params())
-    # self.load_icf_ati_filter(True, training=True)
-    # self.load_icf_ati_filter(True, training=False)
+
+    #
+    # df = pd.read_csv(self.raw_dir + 'crsp_with_vol.csv')
+    #
+    # df.head(10000).to_csv('/Users/adidisheim/Dropbox/Melbourne/teaching/DSF_intro/data/raw/crsp_with_vol.csv')
+    #
+    # ff = pd.read_csv(self.raw_dir + 'ff5.csv')
+    # ff['date'] = pd.to_datetime(ff['date'])
+    # ff.to_csv('/Users/adidisheim/Dropbox/Melbourne/teaching/DSF_intro/data/raw/ff5.csv')

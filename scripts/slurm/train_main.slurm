@@ -3,15 +3,19 @@
 #SBATCH --output=/home/adidishe/EightK/out/train_new_%a.out
 #SBATCH --error=/home/adidishe/EightK/out/train_new_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
-#SBATCH --array=0-32
+#SBATCH --array=131-395
 
 #SBATCH --mail-type=ALL # notifications for job start, end, and failure
 #SBATCH --mail-user=antoine.didisheim@unimelb.edu.au
 
+# Partition for the job:
+#SBATCH --partition=bigmem
+#SBATCH --account="punim2039"
+
 #SBATCH --nodes 1
 #SBATCH --ntasks 1
-#SBATCH --mem 64G
-#SBATCH --cpus-per-task 4
+#SBATCH --mem 94G
+#SBATCH --cpus-per-task 8
 #SBATCH --time 24:00:00
 
 

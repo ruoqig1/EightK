@@ -7,6 +7,7 @@ scp down.tar.gz adidishe@spartan.hpc.unimelb.edu.au:/home/adidishe/EightK/
 # scp -r data/p/abn_ev_monly.p adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/
 # scp -r data/p/load_icf_ati_filter_training.p adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/
 # scp -r data/p/load_icf_ati_filter_training.p adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/
+# scp -r data/p/load_icf_ati_filter.p adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/
 
 
 

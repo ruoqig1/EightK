@@ -5,8 +5,8 @@ chmod +x $0
 
 # Define the upper limit as a variable
 lower_limit=0
-upper_limit=134
-# Loop from 0 to 134
+upper_limit=263
+# Loop from 0 to 395
 for i in $(seq $lower_limit $upper_limit); do
 
   # Define a temporary PBS script name

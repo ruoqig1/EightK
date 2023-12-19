@@ -29,8 +29,12 @@ def load_data_for_this_chunks(par: Params):
             df = pd.concat([df, pd.read_pickle(load_dir + f'df_{year}.p')], axis=0)
             x = pd.concat([x, pd.read_pickle(load_dir + f'x_{year}.p')], axis = 0)
 
+
     df = df.reset_index(drop=True)
     x = x.reset_index(drop=True)
+
+
+
 
     if par.train.abny is not None:
         # ugly set of conditions ot make it compatible with old versions
@@ -46,10 +50,18 @@ def load_data_for_this_chunks(par: Params):
             y = df[['abret_long']]
     else:
         y = df[['ret']]
-
     y = np.sign(y)
     y = y.replace({0: 1})
-    ids = df['id']
+    if par.train.news_filter_training is not None:
+        # 'news0', 'rtime_nr', 'news0_nr', 'news_with_time', 'news_with_time_nr'
+        ind_news = df[par.train.news_filter_training] == 1
+        id_a = df['id'].apply(lambda x: str(x).split('-')[0])
+        id_b = df[par.train.news_filter_training].astype(str)
+        df['id'] = id_a +'-' +id_b
+        ids = df['id']
+    else:
+        ids = df['id']
+
     dates = df['date'].dt.year
 
     ind = ~pd.isna(y.iloc[:,0])

@@ -95,7 +95,11 @@ def drop_already_process_text_from_df(df, par):
 
 
 def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
-    batch_size = 20
+    if ref_or_thrid_party =='rf':
+        batch_size = 20
+    else:
+        batch_size = 20
+
     if par.enc.opt_model_type == OptModelType.BOW1:
         save_size = 10000
     else:
@@ -173,11 +177,11 @@ if __name__ == "__main__":
 
     if args.news == 1:
         if args.ref == 1:
+            # ANGELA THIS ALREADY RAN
             print('START NEWS, REF', flush=True)
             par.enc.news_source = NewsSource.NEWS_REF
             # par.enc.opt_model_type = OptModelType.OPT_125m
             id_col, save_size, batch_size, year, df = load_and_process_news_one_stock_ref_or_third(par, args, 'ref')
-
 
         else:
             print('START NEWS, THIRD', flush=True)

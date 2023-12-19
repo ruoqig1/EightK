@@ -779,6 +779,7 @@ class TrainerParams:
         self.norm = Normalisation.ZSCORE
         self.save_ins = False
         self.tnews_only = False
+        self.news_filter_training = None # 'news0', 'rtime_nr', 'news0_nr', 'news_with_time', 'news_with_time_nr'
         self.l1_ratio = [0.5]
         self.abny = None # if True, we train the model o nabnormal return
 
@@ -1067,4 +1068,6 @@ class Params:
                         v = d[k]
                     s += f'{k}{v}'
         return s
+
+
 

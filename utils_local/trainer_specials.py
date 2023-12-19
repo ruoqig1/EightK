@@ -26,6 +26,7 @@ class TrainerLogisitcWithNewsInSample(TrainerLogisticElasticNet):
         ids_sub = ids.loc[indices]
         times_sub = times.loc[indices]
         y_sub = y_sub.set_index([times_sub, ids_sub])
+        print('$$$$$$$$$$$$ HERE',flush=True)
         return x_sub, y_sub
 
     def _split_data(self, x: pd.DataFrame, y: pd.DataFrame, ids: pd.Series, times: pd.Series, t_index) \

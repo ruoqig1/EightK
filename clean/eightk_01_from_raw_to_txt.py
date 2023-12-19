@@ -73,7 +73,7 @@ def find_item_location_variants(text, x=50):
     extended_matches = [a + b + c for a, b, c in matches]
     return extended_matches
 
-def process_main_eight_k_legal_file(file_text,cik,link,form_id):
+def cprocess_main_eight_k_legal_file(file_text,cik,link,form_id):
     try:
         # we find all the place where an item is mentioned
         item_locations = find_item_location_variants(file_text)

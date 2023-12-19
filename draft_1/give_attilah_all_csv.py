@@ -6,6 +6,20 @@ if __name__ == '__main__':
     par = Params()
     data = Data(par)
     os.makedirs(Constant.DRAFT_1_CSV_PATH,exist_ok=True)
+    ati = data.load_icf_ati_filter(False,False)
+
+    '''
+    news0: binary equal 1 if there is a news on the day of the 8k
+    news0_f: binary equal 1 if there is a news the day AFTER 8k is published
+    rtime: short for ravenpack time. Is the time (hours, minute, seconds) at which the news0 was published.
+    rtime_f: short for ravenpack time. Is the time (hours, minute, seconds) at which the news0_f was published.
+    atime: short for accessionTime, time at which the 8k for mwas put up.
+    '''
+
+
+    csv_file_name = f"{Constant.DRAFT_1_CSV_PATH}new_coverage_def.csv"
+    ati.to_csv(csv_file_name, index=False)
+    print(f"Saved {csv_file_name}")
 
     # List of function names
     functions = ['load_ravenpack_all', 'load_some_relevance_icf', 'load_ml_forecast_draft_1', 'load_mkt_cap_yearly', 'load_snp_const']

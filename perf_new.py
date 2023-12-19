@@ -47,8 +47,10 @@ if __name__ == "__main__":
     temp_dir ='res/model_final_long/'
     temp_dir ='res/model_tf/'
     temp_dir ='res/model_tf_ati_2/'
+    temp_dir ='res/model_tf_ati_news_var/'
+    temp_dir ='res/model_tf_ati_dec/'
     os.makedirs(temp_dir,exist_ok=True)
-    for i in range(12):
+    for i in range(24):
     # for i in [0]:
         par = get_main_experiments(i,train=False)
         try:

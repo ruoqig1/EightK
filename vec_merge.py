@@ -52,12 +52,15 @@ if __name__ == "__main__":
                 vec = vec.rename(columns={'item': 'items'})
                 data = Data(par)
                 if args.ati == 1:
+                    print('training with legalt_ati',flush=True)
                     par.enc.news_source = NewsSource.EIGHT_LEGAL_ATI
                     df = data.load_icf_ati_filter(training=False)
+                    print(df.head(),flush=True)
                 elif args.ati == 2:
                     par.enc.news_source = NewsSource.EIGHT_LEGAL_ATI_TRAIN
                     print('training with legalt_ati_TRAIN',flush=True)
                     df = data.load_icf_ati_filter(training=True)
+                    print(df.head(),flush=True)
                 else:
                     df = data.load_return_for_nlp_on_eightk()
                 df = df.drop_duplicates()
