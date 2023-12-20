@@ -42,7 +42,7 @@ if __name__ == "__main__":
         for model_index in [2]:
             if use_ati:
                 print('load new')
-                load_dir = 'res/model_tf_ati_3/'
+                load_dir = 'res/model_tf_ati_dec/'
                 os.listdir(load_dir)
                 df = pd.read_pickle(load_dir + f'new_{model_index}.p')
                 par = Params()

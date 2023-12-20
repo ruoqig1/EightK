@@ -23,6 +23,7 @@ module load foss/2022a
 module load GCCcore/11.3.0; module load Python/3.10.4
 module load  cuDNN/8.4.1.50-CUDA-11.7.0
 module load TensorFlow/2.11.0-CUDA-11.7.0-deeplearn
+module load OpenMPI/4.1.4; module load PyTorch/1.12.1-CUDA-11.7.0
 source  ~/venvs/nlp_gpu/bin/activate
 
-python3 vec_to_tf_records.py ${SLURM_ARRAY_TASK_ID} --news_on_eight=0 --news_single=1
+python3 vec_to_tf_records.py ${SLURM_ARRAY_TASK_ID} --news_on_eight=0 --news_single=1 --small=1

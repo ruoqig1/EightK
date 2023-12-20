@@ -3,23 +3,23 @@
 #SBATCH --output=/home/adidishe/EightK/out/vec_news_third_%a.out
 #SBATCH --error=/home/adidishe/EightK/out/vec_news_third_%a.err
 #SBATCH --chdir=/home/adidishe/EightK
-#SBATCH --array=0-26
+#SBATCH --array=4-26
 
 # Partition for the job:
 #SBATCH --partition=gpu-a100
 #SBATCH --gres=gpu:1
 #SBATCH --account="punim2039"
 
+#SBATCH --mail-user=antoine.didisheim@unimelb.edu.au
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
+
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
 #SBATCH --time=0-24:0:00
-
-#SBATCH --mail-user=antoine.didisheim@unimelb.edu.au
-#SBATCH --mail-type=FAIL
-#SBATCH --mail-type=BEGIN
-#SBATCH --mail-type=END
 
 module load foss/2022a
 module load GCCcore/11.3.0; module load Python/3.10.4

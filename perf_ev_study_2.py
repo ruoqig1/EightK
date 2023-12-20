@@ -39,10 +39,10 @@ if __name__ == "__main__":
         model_index = 1 # 2 is our main 1 is ok with atis...
         save_dir = 'res/polt_quantile_decile/'
         # for model_index in range(12):
-        for model_index in [2]:
+        for model_index in range(24):
             if use_ati:
                 print('load new')
-                load_dir = 'res/model_tf_ati_3/'
+                load_dir = 'res/model_tf_ati_dec/'
                 os.listdir(load_dir)
                 df = pd.read_pickle(load_dir + f'new_{model_index}.p')
                 par = Params()
@@ -77,11 +77,6 @@ if __name__ == "__main__":
 
             print(par.train.abny,par.train.l1_ratio, par.train.norm.name)
 
-            # acc = df.groupby('items')['acc'].aggregate(['mean','count']).sort_values('mean')
-            # item_to_keep = acc.loc[acc['count']>50,:].index
-
-            # df = df.loc[~df['items'].isin([5.06,5.01,4.02]),:]
-            # df = df.loc[df['items'].isin(item_to_keep),:]
             ev = data.load_abn_return(model=nb_factors,with_alpha=False)
 
             if winsorise_ret>0:
@@ -146,5 +141,5 @@ if __name__ == "__main__":
             os.makedirs(final_dir,exist_ok=True)
             save_dest  =final_dir+f'{model_index}.png'
             plt.savefig(save_dest)
-            plt.close()
+            plt.show()
 

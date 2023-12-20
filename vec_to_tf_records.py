@@ -83,9 +83,10 @@ def serialize_news_link_all_single_news(row):
     ret_val = row['ret']
     ret_m = row['ret_m']
     reuters = int(row['reuters'])
+    encoded_with_mean = int(row['vec_mean'])
     # Create features
     feature = {
-        'vec_last': tf.train.Feature(float_list=tf.train.FloatList(value=vec_last)),
+        'vec': tf.train.Feature(float_list=tf.train.FloatList(value=vec_last)),
         'id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[id_val.encode()])),
         'index': tf.train.Feature(int64_list=tf.train.Int64List(value=[index_val])),
         'timestamp': tf.train.Feature(bytes_list=tf.train.BytesList(value=[timestamp_val.encode()])),
@@ -95,7 +96,8 @@ def serialize_news_link_all_single_news(row):
         'permno': tf.train.Feature(int64_list=tf.train.Int64List(value=[permno_val])),
         'ret': tf.train.Feature(float_list=tf.train.FloatList(value=[ret_val])),
         'ret_m': tf.train.Feature(float_list=tf.train.FloatList(value=[ret_m])),
-        'reuters': tf.train.Feature(int64_list=tf.train.Int64List(value=[reuters]))
+        'reuters': tf.train.Feature(int64_list=tf.train.Int64List(value=[reuters])),
+        'encoded_with_mean': tf.train.Feature(int64_list=tf.train.Int64List(value=[encoded_with_mean])),
     }
     example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
     return example_proto.SerializeToString()
@@ -154,9 +156,13 @@ if __name__ == "__main__":
     if args.news_single == 1:
         # merging
         year_todo = np.arange(1996, 2023, 1)[args.a]  # len 27
-        print(f'Start running for all single news {year_todo}')
+
         par = Params()
-        par.enc.opt_model_type = OptModelType.OPT_13b
+        par.enc.framework = Framework.TENSORFLOW
+        if args.small ==1:
+            par.enc.opt_model_type = OptModelType.OPT_125m
+        else:
+            par.enc.opt_model_type = OptModelType.OPT_13b
         to_process_dir_list = []
         source_list = ['third','ref']
         for source in [NewsSource.NEWS_THIRD, NewsSource.NEWS_REF]:
@@ -168,6 +174,8 @@ if __name__ == "__main__":
         # now we get the dir to save the processed tf records.
         par.train.use_tf_models = True
         save_dir = par.get_training_dir()
+        print(f'Start running for all single news {year_todo}')
+        # python3 vec_to_tf_records.py 0 --news_on_eight=0 --news_single=1 --small=1
 
         data = Data(par)
         df = data.load_crsp_daily()
@@ -182,6 +190,7 @@ if __name__ == "__main__":
 
         vec = pd.DataFrame()
         todo = []
+        # select only the vectors in a given year.
         for k in range(len(to_process_dir_list)):
             todo = todo + [(x,source_list[k],to_process_dir_list[k]) for x in os.listdir(to_process_dir_list[k]) if (int(x.split('_')[0]) == year_todo)]
 
@@ -190,6 +199,10 @@ if __name__ == "__main__":
             vec = pd.read_pickle(to_process_dir + f).reset_index()
             vec['date'] = vec['timestamp'].apply(lambda x: x.split('T')[0])
             vec['date'] = pd.to_datetime(vec['date'], errors='coerce')
+            if '_mean' in f:
+                vec['vec_mean'] = 1
+            else:
+                vec['vec_mean'] = 0
             # now w reduce to the dates that have at least one eightk!
             vec = vec.merge(df)
             vec['reuters'] = (k =='ref')*1

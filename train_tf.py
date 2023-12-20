@@ -54,7 +54,7 @@ class PipelineTrainer:
     def parse_tfrecord(self, example_proto):
         if self.par.enc.news_source in [NewsSource.NEWS_REF_ON_EIGHT_K]:
             feature_description = {
-                'vec_last': tf.io.VarLenFeature(tf.float32),
+                'vec': tf.io.VarLenFeature(tf.float32),
                 'id': tf.io.FixedLenFeature([], tf.string),
                 'index': tf.io.FixedLenFeature([], tf.int64),
                 'timestamp': tf.io.FixedLenFeature([], tf.string),
@@ -72,7 +72,7 @@ class PipelineTrainer:
             }
         else:
             feature_description = {
-                'vec_last': tf.io.VarLenFeature(tf.float32),
+                'vec': tf.io.VarLenFeature(tf.float32),
                 'id': tf.io.FixedLenFeature([], tf.string),
                 'index': tf.io.FixedLenFeature([], tf.int64),
                 'timestamp': tf.io.FixedLenFeature([], tf.string),
@@ -89,7 +89,7 @@ class PipelineTrainer:
 
         if self.norm_params is not None:
             if self.par.train.norm == Normalisation.ZSCORE:
-                parsed_features['vec_last'] = (parsed_features['vec_last'] - self.norm_params['mean']) / tf.sqrt(self.norm_params['var'] + 1e-7)
+                parsed_features['vec'] = (parsed_features['vec'] - self.norm_params['mean']) / tf.sqrt(self.norm_params['var'] + 1e-7)
         return parsed_features
 
     @tf.autograph.experimental.do_not_convert
@@ -111,11 +111,11 @@ class PipelineTrainer:
 
     @tf.autograph.experimental.do_not_convert
     def extract_input_and_label(self, x):
-        return (x['vec_last'], tf.where(x[self.par.train.abny] >= 0, 1, 0))
+        return (x['vec'], tf.where(x[self.par.train.abny] >= 0, 1, 0))
 
     @tf.autograph.experimental.do_not_convert
     def extract_with_id(self, x):
-        return (x['vec_last'], tf.where(x[self.par.train.abny] >= 0, 1, 0), x['id'], x['date'], x['permno'])
+        return (x['vec'], tf.where(x[self.par.train.abny] >= 0, 1, 0), x['id'], x['date'], x['permno'])
 
     @tf.autograph.experimental.do_not_convert
     def load_dataset(self,data_id, tfrecord_files, batch_size, start_year, end_year, return_id_too=False, shuffle=False):

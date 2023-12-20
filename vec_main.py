@@ -95,7 +95,7 @@ def drop_already_process_text_from_df(df, par):
 
 
 def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
-    if ref_or_thrid_party =='rf':
+    if ref_or_thrid_party =='ref':
         batch_size = 20
     else:
         batch_size = 20

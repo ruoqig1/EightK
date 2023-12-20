@@ -50,6 +50,7 @@ def vectorise_in_batch(id_col:tuple, df:pd.DataFrame, save_size:int, batch_size:
     # get save dir
     save_dir = par.get_vec_process_dir()
     print('about to save in',save_dir,flush=True)
+    # python3 vec_main.py 10 --legal=0 --eight=0 --news=1 --third=0 --third=1 --bow=0 --small=1
 
 
     res = df[id_col].copy()
