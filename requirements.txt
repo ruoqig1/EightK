@@ -1,0 +1,8 @@
+# tensorflow<2.11
+didipack
+linearmodels
+pyperclip
+yfinance
+html2text
+wrds
+tqdm

@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --job-name tf_gpu
-#SBATCH -o "/data/projects/punim2119/fin-bert/outputs/ab_%N.%j.out"
-#SBATCH --chdir=/data/projects/punim2119/fin-bert/
+#SBATCH -o "/data/projects/punim2119/EightK/outputs/ab_%N.%j.out"
+#SBATCH --chdir=/data/projects/punim2119/EightK/
 
 #SBATCH --mail-type=ALL # notifications for job start, end, and failure
 #SBATCH --mail-user=ruoqig@student.unimelb.edu.au
@@ -26,6 +26,6 @@ module load foss/2022a Python/3.10.4 SciPy-bundle/2022.05
 module load CUDA/11.7.0 UCX-CUDA/1.13.1-CUDA-11.7.0 cuDNN/8.4.1.50-CUDA-11.7.0
 module load PyTorch/1.12.1-CUDA-11.7.0
 
-source /data/projects/punim2119/fin-bert/venv/bin/activate
+source /data/projects/punim2119/EightK/venv/bin/activate
 
-python3 train_tf.py ${SLURM_ARRAY_TASK_ID} --cpu=0
+python3 train_tf.py --cpu=0
