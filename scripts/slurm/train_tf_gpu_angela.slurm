@@ -10,7 +10,7 @@
 #SBATCH --mail-type=END
 
 # Partition for the job:
-#SBATCH --partition=gpu-a100-short
+#SBATCH --partition=gpu-a100
 #SBATCH --gres=gpu:1
 #SBATCH --account="punim2119"
 
@@ -18,7 +18,7 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=01:50:00
+#SBATCH --time=10:00:00
 
 
 module load GCCcore/11.3.0

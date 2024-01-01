@@ -318,10 +318,10 @@ if __name__ == '__main__':
 
         # Training args
         par.train.use_tf_models = True
-        par.train.batch_size = 32
+        par.train.batch_size = 128
         par.train.monitor_loss = 'loss'
         par.train.patience = 3
-        par.train.max_epoch = 3
+        par.train.max_epoch = 2
 
         start = time.time()
 
