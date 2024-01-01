@@ -24,7 +24,7 @@
 module load GCCcore/11.3.0
 module load foss/2022a Python/3.10.4 SciPy-bundle/2022.05
 module load CUDA/11.7.0 UCX-CUDA/1.13.1-CUDA-11.7.0 cuDNN/8.4.1.50-CUDA-11.7.0
-module load PyTorch/1.12.1-CUDA-11.7.0
+module load TensorFlow/2.11.0-CUDA-11.7.0
 
 source /data/projects/punim2119/EightK/venv/bin/activate
 

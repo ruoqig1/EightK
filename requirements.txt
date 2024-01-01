@@ -6,3 +6,4 @@ yfinance
 html2text
 wrds
 tqdm
+psutil
