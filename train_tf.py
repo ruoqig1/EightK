@@ -34,17 +34,23 @@ class PipelineTrainer:
         self.best_hyper_value = None
 
     @staticmethod
-    def compute_mean_variance(dataset):
+    def compute_mean_variance(dataset, sample_rate=0.1):
         running_sum = 0
         running_squared_sum = 0
         num_samples = 0
 
         for batch, _ in tqdm.tqdm(dataset, 'Computing M-V on training sample'):
-            dense_batch = tf.sparse.to_dense(batch)  # Convert sparse tensor to dense tensor
-            batch_size = dense_batch.shape[0]
-            running_sum += tf.reduce_sum(dense_batch, axis=0)
-            running_squared_sum += tf.reduce_sum(tf.square(dense_batch), axis=0)
-            num_samples += batch_size
+            # Randomly decide whether to include this batch based on sample rate
+            # num_samples is slightly random, but this is to avoid iterating over the entire dataset for the
+            # count of samples first. Given the large size of the dataset, this should be fine.
+            if np.random.rand() < sample_rate:
+                batch_size = batch.shape[0]
+                running_sum += tf.reduce_sum(batch, axis=0)
+                running_squared_sum += tf.reduce_sum(tf.square(batch), axis=0)
+                num_samples += batch_size
+
+        if num_samples == 0:
+            raise ValueError("No samples were selected. Increase the dataset size or the sampling rate.")
 
         mean = running_sum / num_samples
         variance = (running_squared_sum / num_samples) - tf.square(mean)
@@ -86,44 +92,56 @@ class PipelineTrainer:
             }
 
         parsed_features = tf.io.parse_single_example(example_proto, feature_description)
+        parsed_features['vec'] = tf.sparse.to_dense(parsed_features['vec'])
 
         if self.norm_params is not None:
             if self.par.train.norm == Normalisation.ZSCORE:
-                parsed_features['vec'] = (parsed_features['vec'] - self.norm_params['mean']) / tf.sqrt(self.norm_params['var'] + 1e-7)
+                parsed_features['vec'] = (parsed_features['vec'] - self.norm_params['mean']) / tf.sqrt(
+                    self.norm_params['var'] + 1e-7)
         return parsed_features
 
     @tf.autograph.experimental.do_not_convert
     def filter_start_year(self, x, const_start_year):
-        return tf.greater_equal(tf.strings.to_number(tf.strings.substr(x['date'], 0, 4), out_type=tf.int32), const_start_year)
+        return tf.greater_equal(tf.strings.to_number(tf.strings.substr(x['date'], 0, 4), out_type=tf.int32),
+                                const_start_year)
 
     @tf.autograph.experimental.do_not_convert
     def filter_end_year(self, x, const_end_year):
-        return (tf.less_equal(tf.strings.to_number(tf.strings.substr(x['date'], 0, 4), out_type=tf.int32), const_end_year))
+        return tf.less_equal(tf.strings.to_number(tf.strings.substr(x['date'], 0, 4), out_type=tf.int32),
+                             const_end_year)
 
     @tf.autograph.experimental.do_not_convert
     def filter_sample_based_on_par(self, x):
-        reuters_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_reuters is None else tf.equal(x['reuters'], par.train.filter_on_reuters)
-        prn_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_prn is None else tf.equal(x['prn'], par.train.filter_on_prn)
-        alert_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_alert is None else tf.equal(x['alert'], par.train.filter_on_alert)
-        cosine_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_cosine is None else tf.greater(x['cosine'], x['m_cosine'] * (1 + tf.constant(par.train.filter_on_cosine, dtype=tf.float32)))
-        combined_conditions = tf.logical_and(tf.logical_and(tf.logical_and(reuters_condition, prn_condition), alert_condition), cosine_condition)
+        reuters_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_reuters is None else tf.equal(
+            x['reuters'], par.train.filter_on_reuters)
+        prn_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_prn is None else tf.equal(x['prn'],
+                                                                                                               par.train.filter_on_prn)
+        alert_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_alert is None else tf.equal(
+            x['alert'], par.train.filter_on_alert)
+        cosine_condition = tf.constant(True, dtype=tf.bool) if self.par.train.filter_on_cosine is None else tf.greater(
+            x['cosine'], x['m_cosine'] * (1 + tf.constant(par.train.filter_on_cosine, dtype=tf.float32)))
+        combined_conditions = tf.logical_and(
+            tf.logical_and(tf.logical_and(reuters_condition, prn_condition), alert_condition), cosine_condition)
         return combined_conditions
 
     @tf.autograph.experimental.do_not_convert
     def extract_input_and_label(self, x):
-        return (x['vec'], tf.where(x[self.par.train.abny] >= 0, 1, 0))
+        abret = next(filter(x.__contains__, ('abret', 'ret_m')))
+        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0)
 
     @tf.autograph.experimental.do_not_convert
     def extract_with_id(self, x):
-        return (x['vec'], tf.where(x[self.par.train.abny] >= 0, 1, 0), x['id'], x['date'], x['permno'])
+        abret = next(filter(x.__contains__, ('abret', 'ret_m')))
+        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0), \
+        x['id'], x['date'], x['permno']
 
     @tf.autograph.experimental.do_not_convert
-    def load_dataset(self,data_id, tfrecord_files, batch_size, start_year, end_year, return_id_too=False, shuffle=False):
+    def load_dataset(self, data_id, tfrecord_files, batch_size, start_year, end_year, return_id_too=False,
+                     shuffle=False):
         dataset = tf.data.TFRecordDataset(tfrecord_files)
 
         # Parse the dataset using the provided function
         dataset = dataset.map(self.parse_tfrecord)
-
 
         # Convert start_year and end_year to TensorFlow constants
         const_start_year = tf.constant(start_year, dtype=tf.int32)
@@ -138,12 +156,16 @@ class PipelineTrainer:
             if data_id in self.par.train.apply_filter:
                 dataset = dataset.filter(lambda x: self.filter_sample_based_on_par(x))
 
+        if self.input_dim is None:
+            # Take a sample to determine the input shape
+            sample = next(iter(dataset.take(1)))
+            self.input_dim = sample['vec'].shape[0]
+
         # Extract input x (vec_last) and label (sign of abret)
         if return_id_too:
             dataset = dataset.map(self.extract_with_id)
         else:
             dataset = dataset.map(self.extract_input_and_label)
-
 
         if shuffle:
             dataset = dataset.shuffle(buffer_size=10000)  # You can adjust the buffer size as needed
@@ -153,17 +175,33 @@ class PipelineTrainer:
         return dataset
 
     def train_model(self, tr_data, val_data, reg_to_use):
-        early_stop = tf.keras.callbacks.EarlyStopping(monitor=self.par.train.monitor_loss, patience=self.par.train.patience, restore_best_weights=True)
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor=self.par.train.monitor_loss,
+                                                      patience=self.par.train.patience, restore_best_weights=True)
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.par.train.adam_rate)  # Using AMSGrad variant
-        model = tf.keras.models.Sequential([
+
+        layers = [
+            tf.keras.layers.Input(shape=(self.input_dim,))
+        ]
+
+        if self.par.train.norm == Normalisation.ZSCORE:
+            # Create a Normalization layer
+            normalization_layer = tf.keras.layers.Normalization(axis=-1)
+            normalization_layer.adapt(tr_data.map(lambda x, y: x))
+            layers.append(normalization_layer)
+
+        layers.append(
             tf.keras.layers.Dense(1, activation='sigmoid', input_shape=(self.input_dim,), kernel_regularizer=reg_to_use)
-        ])
+        )
+
+        model = tf.keras.models.Sequential(layers)
         model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+        model.summary()
+
         # Train the model with early stopping
         history = model.fit(tr_data, validation_data=val_data, epochs=self.par.train.max_epoch, callbacks=[early_stop])
         if val_data is not None:
             # Get the best validation loss for this regularizer
-            assert 'val_loss' in history.history.keys(), 'Validation set empty, problem with data splitting most likely. '
+            assert 'val_loss' in history.history.keys(), 'Validation set empty, problem with data splitting most likely.'
             min_val_loss = min(history.history['val_loss'])
             return model, min_val_loss
         else:
@@ -171,12 +209,10 @@ class PipelineTrainer:
 
     def compute_parameters_for_normalisation(self):
         mean_vec_last, variance_vec_last = self.compute_mean_variance(self.train_dataset)
-        self.norm_params = {}
-        self.norm_params['mean'] = mean_vec_last
-        self.norm_params['var'] = variance_vec_last
+        self.norm_params = {'mean': mean_vec_last, 'var': variance_vec_last}
         print('Parameters for normalisation estimated on train sample', flush=True)
 
-    def def_create_the_datasets(self):
+    def def_create_the_datasets(self, filter_func=lambda x: True):
 
         path_with_records = self.par.get_training_dir()
         if (socket.gethostname() == '3330L-214940-M') & (self.par.train.sanity_check is None):
@@ -189,13 +225,13 @@ class PipelineTrainer:
         start_test = self.par.grid.year_id
         end_test = self.par.grid.year_id - 1 + self.par.train.testing_window
         tfrecord_files = [os.path.join(path_with_records, f) for f in os.listdir(path_with_records) if '.tfrecord' in f]
-        self.train_dataset = self.load_dataset('train',tfrecord_files, self.par.train.batch_size, start_train, end_train, shuffle=True)
-        self.val_dataset = self.load_dataset('val',tfrecord_files, self.par.train.batch_size, start_val, end_val)
-        self.test_dataset = self.load_dataset('test',tfrecord_files, self.par.train.batch_size, start_test, end_test)
-        self.test_dataset_with_id = self.load_dataset('test',tfrecord_files, self.par.train.batch_size, start_test, end_test, return_id_too=True)
-
-        sample_batch = next(iter(self.train_dataset.take(1)))
-        self.input_dim = sample_batch[0].shape[1]
+        tfrecord_files = list(filter(filter_func, tfrecord_files))
+        self.train_dataset = self.load_dataset('train', tfrecord_files, self.par.train.batch_size, start_train,
+                                               end_train, shuffle=True)
+        self.val_dataset = self.load_dataset('val', tfrecord_files, self.par.train.batch_size, start_val, end_val)
+        self.test_dataset = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test, end_test)
+        self.test_dataset_with_id = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test,
+                                                      end_test, return_id_too=True)
 
     def train_to_find_hyperparams(self):
         best_reg = None
@@ -208,7 +244,8 @@ class PipelineTrainer:
                 reg = tf.keras.regularizers.l1(reg_value)
             if self.par.train.l1_ratio[0] == 0.5:
                 reg = tf.keras.regularizers.l1_l2(reg_value, reg_value)
-            model, min_val_loss = self.train_model(tr_data=self.train_dataset, val_data=self.val_dataset, reg_to_use=reg)
+            model, min_val_loss = self.train_model(tr_data=self.train_dataset, val_data=self.val_dataset,
+                                                   reg_to_use=reg)
             model.evaluate(self.val_dataset)
             model.evaluate(self.train_dataset)
 
@@ -220,6 +257,7 @@ class PipelineTrainer:
             self.best_hyper_value = best_reg_value
 
         print('Selected best penalisation', best_reg_value, flush=True)
+
     def train_on_val_and_train_with_best_hyper(self):
         print('Start the final training (train+val)', flush=True)
         # Combine train and validation datasets
@@ -240,9 +278,12 @@ class PipelineTrainer:
         predictions = self.model.predict(self.test_dataset_with_id.map(extract_features_for_prediction))
 
         true_labels = np.concatenate([y_batch.numpy() for _, y_batch, _, _, _ in self.test_dataset_with_id], axis=0)
-        ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in self.test_dataset_with_id], axis=0)
-        tickers = np.concatenate([ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in self.test_dataset_with_id], axis=0)
-        dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in self.test_dataset_with_id], axis=0)
+        ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in self.test_dataset_with_id],
+                             axis=0)
+        tickers = np.concatenate(
+            [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in self.test_dataset_with_id], axis=0)
+        dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in self.test_dataset_with_id],
+                               axis=0)
 
         # 3. Compute the accuracy
         predicted_labels = (predictions > 0.5).astype(int).flatten()
@@ -267,37 +308,51 @@ class PipelineTrainer:
 
 
 if __name__ == '__main__':
-    args = didi.parse()
-    par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
+    # args = didi.parse()
+    # print(args)
+    # par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
+    for i in range(5):
+        par = get_main_experiments(i, train_gpu=True)
+        par.enc.opt_model_type = OptModelType.OPT_125m
+        par.enc.news_source = NewsSource.NEWS_SINGLE
 
-    start = time.time()
+        # Training args
+        par.train.use_tf_models = True
+        par.train.batch_size = 32
+        par.train.monitor_loss = 'loss'
+        par.train.patience = 3
+        par.train.max_epoch = 3
 
-    # if socket.gethostname() == '3330L-214940-M':
-    #     par.train.max_epoch = 1
-    # else:
-    #     par.train.max_epoch = 1
-    #     par.train.T_train = 2
-    #     par.train.T_val = 1
-    #
-    temp_save_dir = par.get_res_dir()
-    print(temp_save_dir, flush=True)
-    already_processed = os.listdir(temp_save_dir)
-    save_name = f'{par.grid.year_id}.p'
-    if save_name in already_processed:
-        print(f'Already processed {save_name}', flush=True)
-    else:
-        trainer = PipelineTrainer(par)
-        trainer.def_create_the_datasets()
-        if par.train.norm == Normalisation.ZSCORE:
-            trainer.compute_parameters_for_normalisation()
-        # train to find which penalisaiton to use
-        trainer.train_to_find_hyperparams()
-        trainer.train_on_val_and_train_with_best_hyper()
-        end = time.time()
-        print('Ran it all in ', np.round((end - start) / 60, 5), 'min', flush=True)
-        df = trainer.get_prediction_on_test_sample()
-        df.to_pickle(temp_save_dir + save_name)
+        start = time.time()
 
-        print(df, flush=True)
-        print('saved to', temp_save_dir + save_name, flush=True)
-        print('We used',trainer.best_hyper_value)
+        # if socket.gethostname() == '3330L-214940-M':
+        #     par.train.max_epoch = 1
+        # else:
+        #     par.train.max_epoch = 1
+        #     par.train.T_train = 2
+        #     par.train.T_val = 1
+        #
+        temp_save_dir = par.get_res_dir()
+        print('Model Directory ', temp_save_dir, flush=True)
+        already_processed = os.listdir(temp_save_dir)
+        save_name = f'{par.grid.year_id}.p'
+        if save_name in already_processed:
+            print(f'Already processed {save_name}', flush=True)
+        else:
+
+            trainer = PipelineTrainer(par)
+            trainer.def_create_the_datasets(
+                filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'))  # filter by 'mean' in file name
+
+            # train to find which penalisaiton to use
+            trainer.train_to_find_hyperparams()
+            trainer.train_on_val_and_train_with_best_hyper()
+            end = time.time()
+            print('Ran it all in ', np.round((end - start) / 60, 5), 'min', flush=True)
+            df = trainer.get_prediction_on_test_sample()
+            df.to_pickle(temp_save_dir + save_name)
+            trainer.model.save(temp_save_dir + save_name + '_model.keras')
+
+            print(df, flush=True)
+            print('saved to', temp_save_dir + save_name, flush=True)
+            print('We used', trainer.best_hyper_value)

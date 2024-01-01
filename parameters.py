@@ -9,6 +9,7 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 import socket
+import getpass
 import os
 import hashlib
 
@@ -90,6 +91,10 @@ class Constant:
         MAIN_DIR = '/mnt/layline/project/eightk/'
         HUGGING_DIR = None
         HUGGING_DIR_TORCH = None
+    elif getpass.getuser() in ['ruoqig']:
+        MAIN_DIR = '/data/gpfs/projects/punim2119/EightK/'
+        HUGGING_DIR = '/data/gpfs/projects/punim2039/hugging/'
+        HUGGING_DIR_TORCH = '/data/gpfs/projects/punim2039/hugging_torch/'
     else:
         MAIN_DIR = '/data/gpfs/projects/punim2039/EightK/'
         HUGGING_DIR = '/data/gpfs/projects/punim2039/hugging/'
@@ -791,9 +796,9 @@ class TrainerParams:
         self.min_nb_chunks_in_cluster = None
         self.use_tf_models = None
         self.batch_size = None
-        self.adam_rate = None
-        self.patience = None # 5
-        self.monitor_loss = None  # ='loss'
+        self.adam_rate = 0.001
+        self.patience = 6  # number of epochs to wait before early stopping (5-10 for small models, 10-20 for big models)
+        self.monitor_loss = 'loss'  # Metric used to monitor for early stopping (loss or val_loss)
         self.max_epoch = None  # ='loss'
         self.train_on_gpu = None
 
