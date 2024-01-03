@@ -306,9 +306,15 @@ class PipelineTrainer:
         })
         df['accuracy'] = df['y_pred'] == df['y_true']
 
-        _, accuracy_evaluate = self.model.evaluate(self.test_dataset_with_id.map(extract_features_and_labels))
+        evaluation_results = self.model.evaluate(
+            self.test_dataset_with_id.map(extract_features_and_labels),
+            return_dict=True
+        )
         print('####### SANITY CHECK')
-        print("Accuracy from .evaluate:", accuracy_evaluate)
+        if 'accuracy' in evaluation_results:
+            print("Accuracy from .evaluate:", evaluation_results['accuracy'].round(6), flush=True)
+        if 'auc' in evaluation_results:
+            print("AUC from .evaluate:", evaluation_results['auc'].round(6), flush=True)
         print("Accuracy from .df:", df['accuracy'].mean().round(6), flush=True)
 
         return df
@@ -355,10 +361,10 @@ if __name__ == '__main__':
             trainer.train_to_find_hyperparams()
             trainer.train_on_val_and_train_with_best_hyper()
             end = time.time()
+            trainer.model.save(temp_save_dir + save_name + '_model.keras')
             print('Ran it all in ', np.round((end - start) / 60, 5), 'min', flush=True)
             df = trainer.get_prediction_on_test_sample()
             df.to_pickle(temp_save_dir + save_name)
-            trainer.model.save(temp_save_dir + save_name + '_model.keras')
 
             print(df, flush=True)
             print('saved to', temp_save_dir + save_name, flush=True)
