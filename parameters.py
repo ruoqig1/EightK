@@ -798,7 +798,7 @@ class TrainerParams:
         self.batch_size = None
         self.adam_rate = 0.001
         self.patience = 6  # number of epochs to wait before early stopping (5-10 for small models, 10-20 for big models)
-        self.monitor_loss = 'loss'  # Metric used to monitor for early stopping (loss or val_loss)
+        self.monitor_metric = 'loss'  # Metric used to monitor for early stopping (loss or val_auc)
         self.max_epoch = None  # ='loss'
         self.train_on_gpu = None
 

@@ -55,7 +55,7 @@ def get_first_tf_training(id_comb:int,train=True,train_gpu = False) -> Params:
     par.train.use_tf_models = True
     par.train.adam_rate  = 0.001
     par.train.patience = 3  # 5
-    par.train.monitor_loss = 'loss'  # ='loss'
+    par.train.monitor_metric = 'loss'  # ='loss'
     par.train.max_epoch = 100  # ='loss'
     par.train.train_on_gpu = train_gpu
     # par.train.l1_ratio = [0.0] # 0.0 for ridge (which is what these assholes do....)
@@ -152,7 +152,7 @@ def predict_with_news_based_on_some_filters(id_comb:int,train=True,train_gpu = F
     par.train.use_tf_models = True
     par.train.adam_rate  = 0.001
     par.train.patience = 3  # 5
-    par.train.monitor_loss = 'loss'  # ='loss'
+    par.train.monitor_metric = 'loss'  # ='loss'
     par.train.max_epoch = 100  # ='loss'
     par.train.train_on_gpu = train_gpu
     par.train.l1_ratio = [0.5]

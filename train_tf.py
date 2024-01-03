@@ -175,7 +175,7 @@ class PipelineTrainer:
         return dataset
 
     def train_model(self, tr_data, val_data, reg_to_use):
-        early_stop = tf.keras.callbacks.EarlyStopping(monitor=self.par.train.monitor_loss,
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor=self.par.train.monitor_metric,
                                                       patience=self.par.train.patience, restore_best_weights=True)
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.par.train.adam_rate)  # Using AMSGrad variant
 
@@ -194,16 +194,19 @@ class PipelineTrainer:
         )
 
         model = tf.keras.models.Sequential(layers)
-        model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=optimizer,
+                      loss='binary_crossentropy',
+                      metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
         model.summary()
 
         # Train the model with early stopping
         history = model.fit(tr_data, validation_data=val_data, epochs=self.par.train.max_epoch, callbacks=[early_stop])
         if val_data is not None:
-            # Get the best validation loss for this regularizer
+            # Get the best validation AUC for this regularizer
             assert 'val_loss' in history.history.keys(), 'Validation set empty, problem with data splitting most likely.'
             min_val_loss = min(history.history['val_loss'])
-            return model, min_val_loss
+            best_val_auc = max(history.history['val_auc'])
+            return model, history
         else:
             return model
 
@@ -235,7 +238,8 @@ class PipelineTrainer:
 
     def train_to_find_hyperparams(self):
         best_reg = None
-        best_loss = float('inf')
+        metric_direction = -1 if self.par.train.monitor_metric == 'loss' else 1
+        best_metric = -float('inf') * metric_direction
         best_reg_value = None
         for reg_value in self.par.train.shrinkage_list:
             if self.par.train.l1_ratio[0] == 1.0:
@@ -244,13 +248,16 @@ class PipelineTrainer:
                 reg = tf.keras.regularizers.l1(reg_value)
             if self.par.train.l1_ratio[0] == 0.5:
                 reg = tf.keras.regularizers.l1_l2(reg_value, reg_value)
-            model, min_val_loss = self.train_model(tr_data=self.train_dataset, val_data=self.val_dataset,
+            model, history = self.train_model(tr_data=self.train_dataset, val_data=self.val_dataset,
                                                    reg_to_use=reg)
+            print('Evaluate the model on the val_dataset', flush=True)
             model.evaluate(self.val_dataset)
+            print('Evaluate the model on the train_dataset', flush=True)
             model.evaluate(self.train_dataset)
 
-            if min_val_loss < best_loss:
-                best_loss = min_val_loss
+            model_metric = max(metric_direction * np.array(history.history[self.par.train.monitor_metric]))
+            if model_metric < best_metric:
+                best_metric = model_metric
                 best_reg = reg
                 best_reg_value = reg_value
             self.best_hyper = best_reg
@@ -319,7 +326,7 @@ if __name__ == '__main__':
         # Training args
         par.train.use_tf_models = True
         par.train.batch_size = 128
-        par.train.monitor_loss = 'loss'
+        par.train.monitor_metric = 'val_auc'
         par.train.patience = 3
         par.train.max_epoch = 2
 
