@@ -312,9 +312,9 @@ class PipelineTrainer:
         )
         print('####### SANITY CHECK')
         if 'accuracy' in evaluation_results:
-            print("Accuracy from .evaluate:", evaluation_results['accuracy'].round(6), flush=True)
+            print("Accuracy from .evaluate:", evaluation_results['accuracy'], flush=True)
         if 'auc' in evaluation_results:
-            print("AUC from .evaluate:", evaluation_results['auc'].round(6), flush=True)
+            print("AUC from .evaluate:", evaluation_results['auc'], flush=True)
         print("Accuracy from .df:", df['accuracy'].mean().round(6), flush=True)
 
         return df
