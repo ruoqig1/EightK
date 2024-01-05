@@ -175,7 +175,7 @@ class PipelineTrainer:
         return dataset
 
     def train_model(self, tr_data, val_data, reg_to_use):
-        early_stop = tf.keras.callbacks.EarlyStopping(monitor=self.par.train.monitor_metric,
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor="loss",
                                                       patience=self.par.train.patience, restore_best_weights=True)
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.par.train.adam_rate)  # Using AMSGrad variant
 
@@ -324,7 +324,7 @@ if __name__ == '__main__':
     # args = didi.parse()
     # print(args)
     # par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
-    for i in range(3, 5):
+    for i in range(5, 5):
         par = get_main_experiments(i, train_gpu=True)
         par.enc.opt_model_type = OptModelType.OPT_125m
         par.enc.news_source = NewsSource.NEWS_SINGLE
