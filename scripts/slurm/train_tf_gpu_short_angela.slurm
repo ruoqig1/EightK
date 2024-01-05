@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH --job-name tf_gpu
-#SBATCH -o "/data/projects/punim2119/EightK/outputs/ab_%N.%j.out"
+#SBATCH -o "/data/projects/punim2119/EightK/outputs/%j.out"
 #SBATCH --chdir=/data/projects/punim2119/EightK/
 
 #SBATCH --mail-type=ALL # notifications for job start, end, and failure

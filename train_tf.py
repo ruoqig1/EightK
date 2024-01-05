@@ -365,6 +365,7 @@ if __name__ == '__main__':
             print('Ran it all in ', np.round((end - start) / 60, 5), 'min', flush=True)
             df = trainer.get_prediction_on_test_sample()
             df.to_pickle(temp_save_dir + save_name)
+            par.save(temp_save_dir)
 
             print(df, flush=True)
             print('saved to', temp_save_dir + save_name, flush=True)
