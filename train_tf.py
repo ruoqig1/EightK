@@ -324,7 +324,7 @@ if __name__ == '__main__':
     # args = didi.parse()
     # print(args)
     # par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
-    for i in range(5, 5):
+    for i in range(5, 8):
         par = get_main_experiments(i, train_gpu=True)
         par.enc.opt_model_type = OptModelType.OPT_125m
         par.enc.news_source = NewsSource.NEWS_SINGLE
