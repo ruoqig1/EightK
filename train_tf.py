@@ -22,6 +22,7 @@ import tensorflow as tf
 
 class PipelineTrainer:
     def __init__(self, par: Params):
+        self.best_history = None
         self.par = par
         self.norm_params = None
         self.train_dataset = None
@@ -238,6 +239,7 @@ class PipelineTrainer:
 
     def train_to_find_hyperparams(self):
         best_reg = None
+        best_history = None
         metric_direction = -1 if self.par.train.monitor_metric == 'loss' else 1
         best_metric = -float('inf') * metric_direction
         best_reg_value = None
@@ -256,12 +258,14 @@ class PipelineTrainer:
             model.evaluate(self.train_dataset)
 
             model_metric = max(metric_direction * np.array(history.history[self.par.train.monitor_metric]))
-            if model_metric < best_metric:
+            if model_metric > best_metric:
                 best_metric = model_metric
                 best_reg = reg
+                best_history = history
                 best_reg_value = reg_value
             self.best_hyper = best_reg
             self.best_hyper_value = best_reg_value
+            self.best_history = best_history
 
         print('Selected best penalisation', best_reg_value, flush=True)
 
@@ -324,7 +328,7 @@ if __name__ == '__main__':
     # args = didi.parse()
     # print(args)
     # par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
-    for i in range(5, 8):
+    for i in range(7, 8):
         par = get_main_experiments(i, train_gpu=True)
         par.enc.opt_model_type = OptModelType.OPT_125m
         par.enc.news_source = NewsSource.NEWS_SINGLE
