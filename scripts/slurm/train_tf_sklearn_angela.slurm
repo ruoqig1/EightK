@@ -12,6 +12,7 @@
 # Partition for the job:
 #SBATCH --account="punim2119"
 
+#SBATCH --partition=interactive
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --mem=128G
