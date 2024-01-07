@@ -376,21 +376,24 @@ if __name__ == '__main__':
         if save_name in already_processed:
             print(f'Already processed {save_name}', flush=True)
         else:
-
+            print('Loading Datasets', flush=True)
             trainer = PipelineTrainer(par)
             trainer.def_create_the_datasets(
                 filter_func=lambda x: 'mean' in x.split('/')[-1].split('_')
             )  # filter by 'mean' in file name
 
+            print('Converting data to np', flush=True)
             # Split data
             X_train, y_train = extract_features_and_labels_np(trainer.train_dataset)
             X_test, y_test = extract_features_and_labels_np(trainer.test_dataset)
             X_val, y_val = extract_features_and_labels_np(trainer.val_dataset)
 
+            print('Normalising data', flush=True)
             scaler = StandardScaler()
             X_train_scaled = scaler.fit_transform(X_train)
             X_val_scaled = scaler.transform(X_val)
 
+            print('Training model', flush=True)
             ridge_coefficients = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1]
             best_score = 0
             best_coefficient = None
