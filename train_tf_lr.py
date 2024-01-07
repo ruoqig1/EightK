@@ -432,11 +432,11 @@ if __name__ == '__main__':
 
             # Get the probability estimates for each class
 
-            ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in self.test_dataset_with_id],
+            ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in trainer.test_dataset_with_id],
                                  axis=0)
             tickers = np.concatenate(
-                [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in self.test_dataset_with_id], axis=0)
-            dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in self.test_dataset_with_id],
+                [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in trainer.test_dataset_with_id], axis=0)
+            dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in trainer.test_dataset_with_id],
                                    axis=0)
             results_df = pd.DataFrame({
                 'id': ids,
