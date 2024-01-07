@@ -15,7 +15,7 @@
 #SBATCH --partition=interactive
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=128G
+#SBATCH --mem=72G
 #SBATCH --cpus-per-task=8
 #SBATCH --time=10:00:00
 
