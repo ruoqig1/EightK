@@ -369,7 +369,7 @@ if __name__ == '__main__':
         #     par.train.T_train = 2
         #     par.train.T_val = 1
         #
-        temp_save_dir = par.get_res_dir("logistic_regression")
+        temp_save_dir = par.get_res_dir(s="logistic_regression")
         print('Model Directory ', temp_save_dir, flush=True)
         already_processed = os.listdir(temp_save_dir)
         save_name = f'{par.grid.year_id}.p'
