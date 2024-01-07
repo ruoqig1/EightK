@@ -896,10 +896,9 @@ class Params:
         os.makedirs(save_dir, exist_ok=True)
         return save_dir
 
-
-    def get_res_dir(self,temp=True):
+    def get_res_dir(self, temp=True, s=""):
         # create the directory
-        s = self.dict_to_string_for_dir(self.train.__dict__)
+        s = s if s else self.dict_to_string_for_dir(self.train.__dict__)
         temp_str = '/temp'if temp else ''
         save_dir = Constant.MAIN_DIR + f'res{temp_str}/vec_pred/{s}/{self.enc.opt_model_type.name}/{self.enc.news_source.name}/'
         os.makedirs(save_dir, exist_ok=True)
