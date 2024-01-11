@@ -48,30 +48,6 @@ class PipelineTrainer:
         self.model = None
         self.best_hyper_value = None
 
-    @staticmethod
-    def compute_mean_variance(dataset, sample_rate=0.1):
-        running_sum = 0
-        running_squared_sum = 0
-        num_samples = 0
-
-        for batch, _ in tqdm.tqdm(dataset, 'Computing M-V on training sample'):
-            # Randomly decide whether to include this batch based on sample rate
-            # num_samples is slightly random, but this is to avoid iterating over the entire dataset for the
-            # count of samples first. Given the large size of the dataset, this should be fine.
-            if np.random.rand() < sample_rate:
-                batch_size = batch.shape[0]
-                running_sum += tf.reduce_sum(batch, axis=0)
-                running_squared_sum += tf.reduce_sum(tf.square(batch), axis=0)
-                num_samples += batch_size
-
-        if num_samples == 0:
-            raise ValueError("No samples were selected. Increase the dataset size or the sampling rate.")
-
-        mean = running_sum / num_samples
-        variance = (running_squared_sum / num_samples) - tf.square(mean)
-
-        return mean.numpy(), variance.numpy()
-
     def parse_tfrecord(self, example_proto):
         if self.par.enc.news_source in [NewsSource.NEWS_REF_ON_EIGHT_K]:
             feature_description = {
@@ -190,47 +166,6 @@ class PipelineTrainer:
             dataset = dataset.batch(batch_size)
         return dataset
 
-    def train_model(self, tr_data, val_data, reg_to_use):
-        early_stop = tf.keras.callbacks.EarlyStopping(monitor="loss",
-                                                      patience=self.par.train.patience, restore_best_weights=True)
-        optimizer = tf.keras.optimizers.Adam(learning_rate=self.par.train.adam_rate)  # Using AMSGrad variant
-
-        layers = [
-            tf.keras.layers.Input(shape=(self.input_dim,))
-        ]
-
-        if self.par.train.norm == Normalisation.ZSCORE:
-            # Create a Normalization layer
-            normalization_layer = tf.keras.layers.Normalization(axis=-1)
-            normalization_layer.adapt(tr_data.map(lambda x, y: x))
-            layers.append(normalization_layer)
-
-        layers.append(
-            tf.keras.layers.Dense(1, activation='sigmoid', input_shape=(self.input_dim,), kernel_regularizer=reg_to_use)
-        )
-
-        model = tf.keras.models.Sequential(layers)
-        model.compile(optimizer=optimizer,
-                      loss='binary_crossentropy',
-                      metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
-        model.summary()
-
-        # Train the model with early stopping
-        history = model.fit(tr_data, validation_data=val_data, epochs=self.par.train.max_epoch, callbacks=[early_stop])
-        if val_data is not None:
-            # Get the best validation AUC for this regularizer
-            assert 'val_loss' in history.history.keys(), 'Validation set empty, problem with data splitting most likely.'
-            min_val_loss = min(history.history['val_loss'])
-            best_val_auc = max(history.history['val_auc'])
-            return model, history
-        else:
-            return model
-
-    def compute_parameters_for_normalisation(self):
-        mean_vec_last, variance_vec_last = self.compute_mean_variance(self.train_dataset)
-        self.norm_params = {'mean': mean_vec_last, 'var': variance_vec_last}
-        print('Parameters for normalisation estimated on train sample', flush=True)
-
     def def_create_the_datasets(self, filter_func=lambda x: True, batch=True):
 
         path_with_records = self.par.get_training_dir()
@@ -269,7 +204,7 @@ class PipelineTrainer:
             return C, score
 
         # Parallel grid search
-        results = Parallel(n_jobs=-1)(delayed(evaluate_model)(C, self.X_train, self.y_train, self.X_val, self.y_val) for C in self.par.train.shrinkage_list)
+        results = Parallel(n_jobs=3)(delayed(evaluate_model)(C, self.X_train, self.y_train, self.X_val, self.y_val) for C in self.par.train.shrinkage_list)
 
         best_coefficient, best_score = max(results, key=lambda x: x[1])
         self.best_hyper = best_coefficient
@@ -281,7 +216,7 @@ class PipelineTrainer:
         # Train final model on combined training and validation sets with the best hyperparameter
         pipe_final = Pipeline([
             ('scaler', StandardScaler()),
-            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=65, n_jobs=3, verbose=1))
+            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=65, n_jobs=1, verbose=1))
         ])
 
         # Combine the training and validation sets
