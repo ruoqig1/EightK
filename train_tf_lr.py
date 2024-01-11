@@ -23,10 +23,16 @@ import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
+from joblib import Parallel, delayed
 
 class PipelineTrainer:
     def __init__(self, par: Params):
+        self.X_train, self.y_train= None, None
+        self.X_val, self.y_val = None, None
+        self.X_test, self.y_test = None, None
         self.best_history = None
         self.par = par
         self.norm_params = None
@@ -243,98 +249,79 @@ class PipelineTrainer:
         self.test_dataset_with_id = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test,
                                                       end_test, return_id_too=True, batch=batch)
 
+        # for Logistic Regression
+        print('Converting data to np', flush=True)
+        self.X_train, self.y_train = extract_features_and_labels_to_np(trainer.train_dataset)
+        self.X_test, self.y_test = extract_features_and_labels_to_np(trainer.test_dataset)
+        self.X_val, self.y_val = extract_features_and_labels_to_np(trainer.val_dataset)
+
     def train_to_find_hyperparams(self):
-        best_reg = None
-        best_history = None
-        metric_direction = -1 if self.par.train.monitor_metric == 'loss' else 1
-        best_metric = -float('inf') * metric_direction
-        best_reg_value = None
-        for reg_value in self.par.train.shrinkage_list:
-            if self.par.train.l1_ratio[0] == 1.0:
-                reg = tf.keras.regularizers.l2(reg_value)
-            if self.par.train.l1_ratio[0] == 0.0:
-                reg = tf.keras.regularizers.l1(reg_value)
-            if self.par.train.l1_ratio[0] == 0.5:
-                reg = tf.keras.regularizers.l1_l2(reg_value, reg_value)
-            model, history = self.train_model(tr_data=self.train_dataset, val_data=self.val_dataset,
-                                                   reg_to_use=reg)
-            print('Evaluate the model on the val_dataset', flush=True)
-            model.evaluate(self.val_dataset)
-            print('Evaluate the model on the train_dataset', flush=True)
-            model.evaluate(self.train_dataset)
+        def evaluate_model(C, X_train, y_train, X_val, y_val):
+            pipe = Pipeline([
+                ('scaler', StandardScaler()),
+                ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=C, solver='saga', max_iter=65, verbose=1))
+            ])
+            pipe.fit(X_train, y_train)
+            score = accuracy_score(y_val, pipe.predict(X_val))
+            return C, score
 
-            model_metric = max(metric_direction * np.array(history.history[self.par.train.monitor_metric]))
-            if model_metric > best_metric:
-                best_metric = model_metric
-                best_reg = reg
-                best_history = history
-                best_reg_value = reg_value
-            self.best_hyper = best_reg
-            self.best_hyper_value = best_reg_value
-            self.best_history = best_history
+        # Parallel grid search
+        results = Parallel(n_jobs=-1)(delayed(evaluate_model)(C, self.X_train, self.y_train, self.X_val, self.y_val) for C in self.par.train.shrinkage_list)
 
-        print('Selected best penalisation', best_reg_value, flush=True)
+        best_coefficient, best_score = max(results, key=lambda x: x[1])
+        self.best_hyper = best_coefficient
+
+        print('Selected best penalisation', best_coefficient, flush=True)
 
     def train_on_val_and_train_with_best_hyper(self):
         print('Start the final training (train+val)', flush=True)
-        # Combine train and validation datasets
-        combined_dataset = self.train_dataset.concatenate(self.val_dataset)
-        # Train the model using the best hyperparameters found
-        self.model = self.train_model(tr_data=combined_dataset, val_data=None, reg_to_use=self.best_hyper)
+        # Train final model on combined training and validation sets with the best hyperparameter
+        pipe_final = Pipeline([
+            ('scaler', StandardScaler()),
+            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=65, n_jobs=-1, verbose=1))
+        ])
+
+        # Combine the training and validation sets
+        X_combined = np.concatenate([self.X_train, self.X_val])
+        y_combined = np.concatenate([self.y_train, self.y_val])
+
+        pipe_final.fit(X_combined, y_combined)
+        self.model = pipe_final
 
     def get_prediction_on_test_sample(self):
-        @tf.autograph.experimental.do_not_convert
-        def extract_features_for_prediction(x, y, ids, dates, tickers):
-            return x
+        test_score = accuracy_score(self.y_test, self.model.predict(self.X_test))
+        print(f"Test Accuracy: {test_score}")
+        print(classification_report(self.y_test, self.model.predict(self.X_test)))
+        print(confusion_matrix(self.y_test, self.model.predict(self.X_test)))
 
-        @tf.autograph.experimental.do_not_convert
-        def extract_features_and_labels(x, y, ids, dates, tickers):
-            return x, y
+        final_model_pred = self.model.predict(self.X_test)  # Get the predictions
+        final_model_pred_prb = self.model.predict_proba(self.X_test)
 
-        # Now use this function in your map operation
-        predictions = self.model.predict(self.test_dataset_with_id.map(extract_features_for_prediction))
-
-        true_labels = np.concatenate([y_batch.numpy() for _, y_batch, _, _, _ in self.test_dataset_with_id], axis=0)
-        ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in self.test_dataset_with_id],
+        # Get the probability estimates for each class
+        ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in trainer.test_dataset_with_id],
                              axis=0)
         tickers = np.concatenate(
-            [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in self.test_dataset_with_id], axis=0)
-        dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in self.test_dataset_with_id],
+            [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in trainer.test_dataset_with_id], axis=0)
+        dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in trainer.test_dataset_with_id],
                                axis=0)
-
-        # 3. Compute the accuracy
-        predicted_labels = (predictions > 0.5).astype(int).flatten()
-
-        # Saving the results with corresponding IDs, dates, and tickers
-        df = pd.DataFrame({
+        results_df = pd.DataFrame({
             'id': ids,
             'date': dates,
             'ticker': tickers,
-            'y_true': true_labels,
-            'y_pred': predicted_labels,
-            'y_pred_prb': predictions.flatten()
+            'y_true': self.y_test,
+            'y_pred': final_model_pred,
+            'y_pred_prb': final_model_pred_prb[:, 1]
         })
-        df['accuracy'] = df['y_pred'] == df['y_true']
+        results_df['accuracy'] = results_df['y_pred'] == results_df['y_true']
 
-        evaluation_results = self.model.evaluate(
-            self.test_dataset_with_id.map(extract_features_and_labels),
-            return_dict=True
-        )
-        print('####### SANITY CHECK')
-        if 'accuracy' in evaluation_results:
-            print("Accuracy from .evaluate:", evaluation_results['accuracy'], flush=True)
-        if 'auc' in evaluation_results:
-            print("AUC from .evaluate:", evaluation_results['auc'], flush=True)
-        print("Accuracy from .df:", df['accuracy'].mean().round(6), flush=True)
-
-        return df
+        return results_df
 
 
 def parse_function(feature, label):
     return feature.numpy(), label.numpy()
 
 
-def extract_features_and_labels_np(dataset):
+def extract_features_and_labels_to_np(dataset):
     # Use parallel processing to map the parse function
     dataset = dataset.map(lambda x, y: tf.py_function(parse_function, [x, y], [tf.float32, tf.int32]),
                           num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -348,7 +335,7 @@ if __name__ == '__main__':
     # args = didi.parse()
     # print(args)
     # par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
-    for i in range(7, 8):
+    for i in range(5, 8):
         par = get_main_experiments(i, train_gpu=True)
         par.enc.opt_model_type = OptModelType.OPT_125m
         par.enc.news_source = NewsSource.NEWS_SINGLE
@@ -356,9 +343,6 @@ if __name__ == '__main__':
         # Training args
         par.train.use_tf_models = True
         par.train.batch_size = 128
-        par.train.monitor_metric = 'val_auc'
-        par.train.patience = 3
-        par.train.max_epoch = 2
 
         start = time.time()
 
@@ -382,76 +366,16 @@ if __name__ == '__main__':
                 filter_func=lambda x: 'mean' in x.split('/')[-1].split('_')
             )  # filter by 'mean' in file name
 
-            print('Converting data to np', flush=True)
-            # Split data
-            X_train, y_train = extract_features_and_labels_np(trainer.train_dataset)
-            X_test, y_test = extract_features_and_labels_np(trainer.test_dataset)
-            X_val, y_val = extract_features_and_labels_np(trainer.val_dataset)
+            trainer.train_to_find_hyperparams()
+            trainer.train_on_val_and_train_with_best_hyper()
 
-            print('Normalising data', flush=True)
-            scaler = StandardScaler()
-            X_train_scaled = scaler.fit_transform(X_train)
-            X_val_scaled = scaler.transform(X_val)
-
-            print('Training model', flush=True)
-            ridge_coefficients = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1]
-            best_score = 0
-            best_coefficient = None
-
-            # Tune the ridge penalty coefficient
-            for C in ridge_coefficients:
-                model = LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=C, solver='saga', max_iter=50, n_jobs=-1, verbose=1)
-                model.fit(X_train_scaled, y_train)
-                score = accuracy_score(y_val, model.predict(X_val_scaled))
-                if score > best_score:
-                    best_score = score
-                    best_coefficient = C
-
-                print(f"Coefficient {C}: Validation Accuracy = {score}")
-
-            print(f"Best Coefficient: {best_coefficient}")
-
-            # Combine the training and validation sets
-            X_combined = np.concatenate([X_train, X_val])
-            y_combined = np.concatenate([y_train, y_val])
-
-            final_scaler = StandardScaler()
-            X_combined_scaled = final_scaler.fit_transform(X_combined)
-            X_test_scaled = final_scaler.transform(X_test)
-
-
-            # Train the final model on the combined dataset
-            final_model = LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=best_coefficient, solver='saga', max_iter=50, n_jobs=-1, verbose=1)
-            final_model.fit(X_combined_scaled, y_combined)
-
-            final_model_pred = final_model.predict(X_test_scaled)
-            final_model_pred_prb = final_model.predict_proba(X_test_scaled)
-
-            print(classification_report(y_test, final_model_pred))
-            print(confusion_matrix(y_test, final_model_pred))
-
-            # Get the probability estimates for each class
-
-            ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in trainer.test_dataset_with_id],
-                                 axis=0)
-            tickers = np.concatenate(
-                [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in trainer.test_dataset_with_id], axis=0)
-            dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in trainer.test_dataset_with_id],
-                                   axis=0)
-            results_df = pd.DataFrame({
-                'id': ids,
-                'date': dates,
-                'ticker': tickers,
-                'y_true': y_test,
-                'y_pred': final_model_pred,
-                'y_pred_prb': final_model_pred_prb[:, 1]
-            })
-            results_df['accuracy'] = results_df['y_pred'] == results_df['y_true']
+            # Evaluate the final model on the test set
+            results_df = trainer.get_prediction_on_test_sample()
 
             end = time.time()
 
             # save the final model
-            joblib.dump(final_model, temp_save_dir + save_name + '_model.joblib')
+            joblib.dump(trainer.model, temp_save_dir + save_name + '_model.joblib')
             print('Ran it all in ', np.round((end - start) / 60, 5), 'min', flush=True)
 
             results_df.to_pickle(temp_save_dir + save_name)
