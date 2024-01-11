@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 import os
 
+from sklearnex import patch_sklearn
+patch_sklearn()
+
 import tqdm
 
 from parameters import *
@@ -278,7 +281,7 @@ class PipelineTrainer:
         # Train final model on combined training and validation sets with the best hyperparameter
         pipe_final = Pipeline([
             ('scaler', StandardScaler()),
-            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=65, n_jobs=-1, verbose=1))
+            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=65, n_jobs=3, verbose=1))
         ])
 
         # Combine the training and validation sets
