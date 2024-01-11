@@ -204,7 +204,7 @@ class PipelineTrainer:
             return C, score
 
         # Parallel grid search
-        results = Parallel(n_jobs=3)(delayed(evaluate_model)(C, self.X_train, self.y_train, self.X_val, self.y_val) for C in self.par.train.shrinkage_list)
+        results = Parallel(n_jobs=2, pre_dispatch='1*n_jobs')(delayed(evaluate_model)(C, self.X_train, self.y_train, self.X_val, self.y_val) for C in self.par.train.shrinkage_list)
 
         best_coefficient, best_score = max(results, key=lambda x: x[1])
         self.best_hyper = best_coefficient
@@ -216,7 +216,7 @@ class PipelineTrainer:
         # Train final model on combined training and validation sets with the best hyperparameter
         pipe_final = Pipeline([
             ('scaler', StandardScaler()),
-            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=65, n_jobs=1, verbose=1))
+            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=75, n_jobs=1, verbose=1))
         ])
 
         # Combine the training and validation sets
@@ -304,6 +304,7 @@ if __name__ == '__main__':
                 filter_func=lambda x: 'mean' in x.split('/')[-1].split('_')
             )  # filter by 'mean' in file name
 
+            print('Grid Search...', flush=True)
             trainer.train_to_find_hyperparams()
             trainer.train_on_val_and_train_with_best_hyper()
 
