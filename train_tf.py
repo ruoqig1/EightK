@@ -101,15 +101,10 @@ class PipelineTrainer:
                     self.norm_params['var'] + 1e-7)
         return parsed_features
 
-    @tf.autograph.experimental.do_not_convert
-    def filter_start_year(self, x, const_start_year):
-        return tf.greater_equal(tf.strings.to_number(tf.strings.substr(x['date'], 0, 4), out_type=tf.int32),
-                                const_start_year)
-
-    @tf.autograph.experimental.do_not_convert
-    def filter_end_year(self, x, const_end_year):
-        return tf.less_equal(tf.strings.to_number(tf.strings.substr(x['date'], 0, 4), out_type=tf.int32),
-                             const_end_year)
+    def filter_years(self, x, const_start_year, const_end_year):
+        year = tf.strings.to_number(tf.strings.substr(x['date'], 0, 4), out_type=tf.int32)
+        return tf.logical_and(tf.greater_equal(year, const_start_year),
+                              tf.less_equal(year, const_end_year))
 
     @tf.autograph.experimental.do_not_convert
     def filter_sample_based_on_par(self, x):
@@ -126,47 +121,45 @@ class PipelineTrainer:
         return combined_conditions
 
     @tf.autograph.experimental.do_not_convert
-    def extract_input_and_label(self, x):
-        abret = next(filter(x.__contains__, ('abret', 'ret_m')))
-        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0)
-
-    @tf.autograph.experimental.do_not_convert
-    def extract_with_id(self, x):
-        abret = next(filter(x.__contains__, ('abret', 'ret_m')))
-        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0), \
-        x['id'], x['date'], x['permno']
-
-    @tf.autograph.experimental.do_not_convert
-    def load_dataset(self, data_id, tfrecord_files, batch_size, start_year, end_year, return_id_too=False,
-                     shuffle=False, batch=True):
+    def load_base_dataset(self, tfrecord_files):
         dataset = tf.data.TFRecordDataset(tfrecord_files)
 
         # Parse the dataset using the provided function
         dataset = dataset.map(self.parse_tfrecord)
-
-        # Convert start_year and end_year to TensorFlow constants
-        const_start_year = tf.constant(start_year, dtype=tf.int32)
-        const_end_year = tf.constant(end_year, dtype=tf.int32)
-
-        # Filter the dataset based on years
-        dataset = dataset.filter(lambda x: self.filter_start_year(x, const_start_year))
-        dataset = dataset.filter(lambda x: self.filter_end_year(x, const_end_year))
-
-        # If this particular dataset must be filtered, we apply the filter at the tfrecords level.
-        if self.par.train.apply_filter is not None:
-            if data_id in self.par.train.apply_filter:
-                dataset = dataset.filter(lambda x: self.filter_sample_based_on_par(x))
 
         if self.input_dim is None:
             # Take a sample to determine the input shape
             sample = next(iter(dataset.take(1)))
             self.input_dim = sample['vec'].shape[0]
 
+        return dataset
+
+    def extract_input_and_label(self, x):
+        abret = next(filter(x.__contains__, ('abret', 'ret_m')))
+        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0)
+
+    def extract_with_id(self, x):
+        abret = next(filter(x.__contains__, ('abret', 'ret_m')))
+        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0), \
+            x['id'], x['date'], x['permno']
+
+    @tf.autograph.experimental.do_not_convert
+    def load_dataset(self, data_id, dataset, batch_size, start_year, end_year, include_id=False,
+                     shuffle=False, batch=True):
+        # Convert start_year and end_year to TensorFlow constants
+        const_start_year = tf.constant(start_year, dtype=tf.int32)
+        const_end_year = tf.constant(end_year, dtype=tf.int32)
+
+        # Filter the dataset based on years
+        dataset = dataset.filter(lambda x: self.filter_years(x, const_start_year, const_end_year))
+
+        # If this particular dataset must be filtered, we apply the filter at the tfrecords level.
+        if self.par.train.apply_filter is not None:
+            if data_id in self.par.train.apply_filter:
+                dataset = dataset.filter(lambda x: self.filter_sample_based_on_par(x))
+
         # Extract input x (vec_last) and label (sign of abret)
-        if return_id_too:
-            dataset = dataset.map(self.extract_with_id)
-        else:
-            dataset = dataset.map(self.extract_input_and_label)
+        dataset = dataset.map(self.extract_with_id if include_id else self.extract_input_and_label)
 
         if shuffle:
             dataset = dataset.shuffle(buffer_size=10000)  # You can adjust the buffer size as needed
@@ -177,8 +170,11 @@ class PipelineTrainer:
         return dataset
 
     def train_model(self, tr_data, val_data, reg_to_use):
-        early_stop = tf.keras.callbacks.EarlyStopping(monitor="loss",
-                                                      patience=self.par.train.patience, restore_best_weights=True)
+        early_stop = tf.keras.callbacks.EarlyStopping(
+            monitor="loss",
+            patience=self.par.train.patience,
+            restore_best_weights=True
+        )
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.par.train.adam_rate)  # Using AMSGrad variant
 
         layers = [
@@ -198,7 +194,8 @@ class PipelineTrainer:
         model = tf.keras.models.Sequential(layers)
         model.compile(optimizer=optimizer,
                       loss='binary_crossentropy',
-                      metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
+                      metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(),
+                               tf.keras.metrics.Recall()])
         model.summary()
 
         # Train the model with early stopping
@@ -230,13 +227,20 @@ class PipelineTrainer:
         start_test = self.par.grid.year_id
         end_test = self.par.grid.year_id - 1 + self.par.train.testing_window
         tfrecord_files = [os.path.join(path_with_records, f) for f in os.listdir(path_with_records) if '.tfrecord' in f]
+        tfrecord_files = list(
+            filter(lambda x: start_train <= int(x.split('/')[-1].split('_')[0]) <= end_test, tfrecord_files)
+        )
         tfrecord_files = list(filter(filter_func, tfrecord_files))
-        self.train_dataset = self.load_dataset('train', tfrecord_files, self.par.train.batch_size, start_train,
+        base_dataset = self.load_base_dataset(tfrecord_files)
+
+        self.train_dataset = self.load_dataset('train', base_dataset, self.par.train.batch_size, start_train,
                                                end_train, shuffle=True, batch=batch)
-        self.val_dataset = self.load_dataset('val', tfrecord_files, self.par.train.batch_size, start_val, end_val, batch=batch)
-        self.test_dataset = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test, end_test, batch=batch)
-        self.test_dataset_with_id = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test,
-                                                      end_test, return_id_too=True, batch=batch)
+        self.val_dataset = self.load_dataset('val', base_dataset, self.par.train.batch_size, start_val, end_val,
+                                             batch=batch)
+        self.test_dataset = self.load_dataset('test', base_dataset, self.par.train.batch_size, start_test, end_test,
+                                              batch=batch)
+        self.test_dataset_with_id = self.load_dataset('test', base_dataset, self.par.train.batch_size, start_test,
+                                                      end_test, include_id=True, batch=batch)
 
     def train_to_find_hyperparams(self):
         best_reg = None
@@ -252,7 +256,7 @@ class PipelineTrainer:
             if self.par.train.l1_ratio[0] == 0.5:
                 reg = tf.keras.regularizers.l1_l2(reg_value, reg_value)
             model, history = self.train_model(tr_data=self.train_dataset, val_data=self.val_dataset,
-                                                   reg_to_use=reg)
+                                              reg_to_use=reg)
             print('Evaluate the model on the val_dataset', flush=True)
             model.evaluate(self.val_dataset)
             print('Evaluate the model on the train_dataset', flush=True)
@@ -264,9 +268,9 @@ class PipelineTrainer:
                 best_reg = reg
                 best_history = history
                 best_reg_value = reg_value
-            self.best_hyper = best_reg
-            self.best_hyper_value = best_reg_value
-            self.best_history = best_history
+        self.best_hyper = best_reg
+        self.best_hyper_value = best_reg_value
+        self.best_history = best_history
 
         print('Selected best penalisation', best_reg_value, flush=True)
 
@@ -286,18 +290,23 @@ class PipelineTrainer:
         def extract_features_and_labels(x, y, ids, dates, tickers):
             return x, y
 
-        # Now use this function in your map operation
+        # Predict on the test dataset
         predictions = self.model.predict(self.test_dataset_with_id.map(extract_features_for_prediction))
 
-        true_labels = np.concatenate([y_batch.numpy() for _, y_batch, _, _, _ in self.test_dataset_with_id], axis=0)
-        ids = np.concatenate([id_batch.numpy().astype(str) for _, _, id_batch, _, _ in self.test_dataset_with_id],
-                             axis=0)
-        tickers = np.concatenate(
-            [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in self.test_dataset_with_id], axis=0)
-        dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in self.test_dataset_with_id],
-                               axis=0)
+        # Extract true labels, IDs, tickers, and dates in one pass
+        true_labels, ids, tickers, dates = [], [], [], []
+        for y_batch, id_batch, date_batch, ticker_batch in self.test_dataset_with_id:
+            true_labels.append(y_batch.numpy())
+            ids.append(id_batch.numpy().astype(str))
+            tickers.append(ticker_batch.numpy().astype(int))
+            dates.append(date_batch.numpy().astype(str))
 
-        # 3. Compute the accuracy
+        true_labels = np.concatenate(true_labels, axis=0)
+        ids = np.concatenate(ids, axis=0)
+        tickers = np.concatenate(tickers, axis=0)
+        dates = np.concatenate(dates, axis=0)
+
+        # Compute the predicted labels
         predicted_labels = (predictions > 0.5).astype(int).flatten()
 
         # Saving the results with corresponding IDs, dates, and tickers
@@ -336,6 +345,7 @@ if __name__ == '__main__':
 
         # Training args
         par.train.use_tf_models = True
+        par.train.l1_ratio = [0.5]
         par.train.batch_size = 128
         par.train.monitor_metric = 'val_auc'
         par.train.patience = 3
@@ -362,7 +372,7 @@ if __name__ == '__main__':
             trainer.def_create_the_datasets(
                 filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'))  # filter by 'mean' in file name
 
-            # train to find which penalisaiton to use
+            # train to find which penalisation to use
             trainer.train_to_find_hyperparams()
             trainer.train_on_val_and_train_with_best_hyper()
             end = time.time()
