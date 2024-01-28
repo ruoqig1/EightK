@@ -121,11 +121,13 @@ class PipelineTrainer:
         return combined_conditions
 
     @tf.autograph.experimental.do_not_convert
-    def load_base_dataset(self, tfrecord_files):
+    def load_base_dataset(self, tfrecord_files, ratio=1.0):
         dataset = tf.data.TFRecordDataset(tfrecord_files)
-
-        # Parse the dataset using the provided function
         dataset = dataset.map(self.parse_tfrecord)
+
+        # Reduce the dataset to the specified ratio
+        if ratio < 1.0:
+            dataset = dataset.filter(lambda x: tf.random.uniform([]) < ratio)
 
         if self.input_dim is None:
             # Take a sample to determine the input shape
@@ -231,7 +233,7 @@ class PipelineTrainer:
             filter(lambda x: start_train <= int(x.split('/')[-1].split('_')[0]) <= end_test, tfrecord_files)
         )
         tfrecord_files = list(filter(filter_func, tfrecord_files))
-        base_dataset = self.load_base_dataset(tfrecord_files)
+        base_dataset = self.load_base_dataset(tfrecord_files, dataset_ratio)
 
         self.train_dataset = self.load_dataset('train', base_dataset, self.par.train.batch_size, start_train,
                                                end_train, shuffle=True, batch=batch)
@@ -351,6 +353,8 @@ if __name__ == '__main__':
         par.train.patience = 3
         par.train.max_epoch = 2
 
+        dataset_ratio = 0.1  # reduce the dataset size for faster training
+
         start = time.time()
 
         # if socket.gethostname() == '3330L-214940-M':
@@ -371,7 +375,7 @@ if __name__ == '__main__':
             trainer = PipelineTrainer(par)
             trainer.def_create_the_datasets(
                 filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'))  # filter by 'mean' in file name
-
+            print('Preprocessing time', np.round((time.time() - start) / 60, 5), 'min', flush=True)
             # train to find which penalisation to use
             trainer.train_to_find_hyperparams()
             trainer.train_on_val_and_train_with_best_hyper()
