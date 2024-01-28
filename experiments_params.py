@@ -26,7 +26,7 @@ def get_main_experiments(id_comb: int, train=True, train_gpu=False, tensorboard=
 
     par.train.tnews_only = True
     grid = [
-        ['train', 'T_train', [8]],
+        ['train', 'T_train', [6]],
         ['train', 'norm', [Normalisation.ZSCORE, Normalisation.MINMAX]],  # ,Normalisation.MINMAX
         ['train', 'l1_ratio', [[0.0], [0.5], [1.0]]],
         ['train', 'abny', [True, None]],

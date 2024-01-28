@@ -38,7 +38,7 @@ class PipelineTrainer:
 
         if self.par.train.tensorboard:
             self.log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.tensorboard_callback = TensorBoard(log_dir=self.log_dir, histogram_freq=1)
+            self.tensorboard_callback = TensorBoard(log_dir=self.log_dir, histogram_freq=1, profile_batch=3)
             print("tensorboard --logdir=" + os.path.abspath(self.log_dir))
 
     @staticmethod
@@ -127,28 +127,10 @@ class PipelineTrainer:
             tf.logical_and(tf.logical_and(reuters_condition, prn_condition), alert_condition), cosine_condition)
         return combined_conditions
 
-    @staticmethod
-    def reduce_dataset(dataset, ratio):
-        # This function will return a new dataset with the specified ratio
-        def generator():
-            skip = int(1 / ratio)
-            for count, element in enumerate(dataset):
-                if count % skip == 0:
-                    yield element
-
-        return tf.data.Dataset.from_generator(
-            generator,
-            output_signature=dataset.element_spec
-        )
-
     @tf.autograph.experimental.do_not_convert
-    def load_base_dataset(self, tfrecord_files, ratio=1.0):
+    def load_base_dataset(self, tfrecord_files):
         dataset = tf.data.TFRecordDataset(tfrecord_files)
         dataset = dataset.map(self.parse_tfrecord)
-
-        # Reduce the dataset to the specified ratio
-        if ratio < 1.0:
-            dataset = self.reduce_dataset(dataset, ratio)
 
         if self.input_dim is None:
             # Take a sample to determine the input shape
@@ -217,7 +199,9 @@ class PipelineTrainer:
         model.compile(optimizer=optimizer,
                       loss='binary_crossentropy',
                       metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(),
-                               tf.keras.metrics.Recall()])
+                               tf.keras.metrics.Recall()],
+                      run_eagerly=True)
+        model.summary()
 
         callbacks = [early_stop]
         if self.par.train.tensorboard:
@@ -239,24 +223,24 @@ class PipelineTrainer:
         self.norm_params = {'mean': mean_vec_last, 'var': variance_vec_last}
         print('Parameters for normalisation estimated on train sample', flush=True)
 
-    def def_create_the_datasets(self, filter_func=lambda x: True, batch=True, dataset_ratio=1.0):
+    def def_create_the_datasets(self, filter_func=lambda x: True, batch=True):
 
         path_with_records = self.par.get_training_dir()
         if (socket.gethostname() == '3330L-214940-M') & (self.par.train.sanity_check is None):
             path_with_records = path_with_records[:-1] + '_debug/'
 
-        end_val = self.par.grid.year_id - 1
+        end_test = self.par.grid.year_id
+        start_test = self.par.grid.year_id - 1 + self.par.train.testing_window
+        end_val = start_test - 1
         start_val = end_val - self.par.train.T_val + 1
-        start_train = self.par.grid.year_id - self.par.train.T_train
         end_train = start_val - 1
-        start_test = self.par.grid.year_id
-        end_test = self.par.grid.year_id - 1 + self.par.train.testing_window
+        start_train = end_train - self.par.train.T_train + 1
         tfrecord_files = [os.path.join(path_with_records, f) for f in os.listdir(path_with_records) if '.tfrecord' in f]
         tfrecord_files = list(
             filter(lambda x: start_train <= int(x.split('/')[-1].split('_')[0]) <= end_test, tfrecord_files)
         )
         tfrecord_files = list(filter(filter_func, tfrecord_files))
-        base_dataset = self.load_base_dataset(tfrecord_files, dataset_ratio)
+        base_dataset = self.load_base_dataset(tfrecord_files)
 
         self.train_dataset = self.load_dataset('train', base_dataset, self.par.train.batch_size, start_train,
                                                end_train, shuffle=True, batch=batch)
@@ -376,7 +360,7 @@ if __name__ == '__main__':
         par.train.patience = 3
         par.train.max_epoch = 2
 
-        dataset_ratio = 0.1  # reduce the dataset size for faster training
+        par.train.T_train = 1  # reduce the dataset size for faster training
 
         start = time.time()
 
@@ -398,7 +382,6 @@ if __name__ == '__main__':
             trainer = PipelineTrainer(par)
             trainer.def_create_the_datasets(
                 filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'),  # filter by 'mean' in file name
-                dataset_ratio=dataset_ratio
             )
             print('Preprocessing time', np.round((time.time() - start) / 60, 5), 'min', flush=True)
             # train to find which penalisation to use
