@@ -1,7 +1,6 @@
 import didipack as didi
 import numpy as np
 import pandas as pd
-import os
 
 import tqdm
 
@@ -18,6 +17,9 @@ from utils_local.general import *
 from utils_local.trainer_specials import *
 from experiments_params import get_main_experiments
 import tensorflow as tf
+from tensorflow.keras.callbacks import TensorBoard
+import datetime
+import os
 
 
 class PipelineTrainer:
@@ -33,6 +35,11 @@ class PipelineTrainer:
         self.best_hyper = None
         self.model = None
         self.best_hyper_value = None
+
+        if self.par.train.tensorboard:
+            self.log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            self.tensorboard_callback = TensorBoard(log_dir=self.log_dir, histogram_freq=1)
+            print("tensorboard --logdir=" + os.path.abspath(self.log_dir))
 
     @staticmethod
     def compute_mean_variance(dataset, sample_rate=0.1):
@@ -120,6 +127,20 @@ class PipelineTrainer:
             tf.logical_and(tf.logical_and(reuters_condition, prn_condition), alert_condition), cosine_condition)
         return combined_conditions
 
+    @staticmethod
+    def reduce_dataset(dataset, ratio):
+        # This function will return a new dataset with the specified ratio
+        def generator():
+            skip = int(1 / ratio)
+            for count, element in enumerate(dataset):
+                if count % skip == 0:
+                    yield element
+
+        return tf.data.Dataset.from_generator(
+            generator,
+            output_signature=dataset.element_spec
+        )
+
     @tf.autograph.experimental.do_not_convert
     def load_base_dataset(self, tfrecord_files, ratio=1.0):
         dataset = tf.data.TFRecordDataset(tfrecord_files)
@@ -127,7 +148,7 @@ class PipelineTrainer:
 
         # Reduce the dataset to the specified ratio
         if ratio < 1.0:
-            dataset = dataset.filter(lambda x: tf.random.uniform([]) < ratio)
+            dataset = self.reduce_dataset(dataset, ratio)
 
         if self.input_dim is None:
             # Take a sample to determine the input shape
@@ -164,11 +185,10 @@ class PipelineTrainer:
         dataset = dataset.map(self.extract_with_id if include_id else self.extract_input_and_label)
 
         if shuffle:
-            dataset = dataset.shuffle(buffer_size=10000)  # You can adjust the buffer size as needed
-
-        # Batch the dataset
+            dataset = dataset.shuffle(buffer_size=10000)
         if batch:
             dataset = dataset.batch(batch_size)
+        dataset = dataset.prefetch(10)
         return dataset
 
     def train_model(self, tr_data, val_data, reg_to_use):
@@ -198,10 +218,13 @@ class PipelineTrainer:
                       loss='binary_crossentropy',
                       metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(),
                                tf.keras.metrics.Recall()])
-        model.summary()
+
+        callbacks = [early_stop]
+        if self.par.train.tensorboard:
+            callbacks.append(self.tensorboard_callback)
 
         # Train the model with early stopping
-        history = model.fit(tr_data, validation_data=val_data, epochs=self.par.train.max_epoch, callbacks=[early_stop])
+        history = model.fit(tr_data, validation_data=val_data, epochs=self.par.train.max_epoch, callbacks=callbacks)
         if val_data is not None:
             # Get the best validation AUC for this regularizer
             assert 'val_loss' in history.history.keys(), 'Validation set empty, problem with data splitting most likely.'
@@ -216,7 +239,7 @@ class PipelineTrainer:
         self.norm_params = {'mean': mean_vec_last, 'var': variance_vec_last}
         print('Parameters for normalisation estimated on train sample', flush=True)
 
-    def def_create_the_datasets(self, filter_func=lambda x: True, batch=True):
+    def def_create_the_datasets(self, filter_func=lambda x: True, batch=True, dataset_ratio=1.0):
 
         path_with_records = self.par.get_training_dir()
         if (socket.gethostname() == '3330L-214940-M') & (self.par.train.sanity_check is None):
@@ -374,7 +397,9 @@ if __name__ == '__main__':
 
             trainer = PipelineTrainer(par)
             trainer.def_create_the_datasets(
-                filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'))  # filter by 'mean' in file name
+                filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'),  # filter by 'mean' in file name
+                dataset_ratio=dataset_ratio
+            )
             print('Preprocessing time', np.round((time.time() - start) / 60, 5), 'min', flush=True)
             # train to find which penalisation to use
             trainer.train_to_find_hyperparams()

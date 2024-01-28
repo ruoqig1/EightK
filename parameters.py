@@ -801,6 +801,7 @@ class TrainerParams:
         self.monitor_metric = 'loss'  # Metric used to monitor for early stopping (loss or val_auc)
         self.max_epoch = None  # ='loss'
         self.train_on_gpu = None
+        self.tensorboard = False
 
         self.apply_filter = None
         self.filter_on_reuters = None
