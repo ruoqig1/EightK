@@ -38,7 +38,7 @@ class PipelineTrainer:
 
         if self.par.train.tensorboard:
             self.log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.tensorboard_callback = TensorBoard(log_dir=self.log_dir, histogram_freq=1, profile_batch=3)
+            self.tensorboard_callback = TensorBoard(log_dir=self.log_dir, histogram_freq=1, profile_batch='1,3')
             print("tensorboard --logdir=" + os.path.abspath(self.log_dir))
 
     @staticmethod
@@ -304,7 +304,7 @@ class PipelineTrainer:
 
         # Extract true labels, IDs, tickers, and dates in one pass
         true_labels, ids, tickers, dates = [], [], [], []
-        for y_batch, id_batch, date_batch, ticker_batch in self.test_dataset_with_id:
+        for _, y_batch, id_batch, date_batch, ticker_batch in self.test_dataset_with_id:
             true_labels.append(y_batch.numpy())
             ids.append(id_batch.numpy().astype(str))
             tickers.append(ticker_batch.numpy().astype(int))
@@ -360,7 +360,7 @@ if __name__ == '__main__':
         par.train.patience = 3
         par.train.max_epoch = 2
 
-        par.train.T_train = 1  # reduce the dataset size for faster training
+        # par.train.T_train = 1  # reduce the dataset size for faster training
 
         start = time.time()
 
