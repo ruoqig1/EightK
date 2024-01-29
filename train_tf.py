@@ -31,6 +31,7 @@ class PipelineTrainer:
         self.val_dataset = None
         self.test_dataset = None
         self.test_dataset_with_id = None
+        self.train_val_dataset = None
         self.input_dim = None
         self.best_hyper = None
         self.model = None
@@ -250,6 +251,8 @@ class PipelineTrainer:
                                               batch=batch)
         self.test_dataset_with_id = self.load_dataset('test', base_dataset, self.par.train.batch_size, start_test,
                                                       end_test, include_id=True, batch=batch)
+        self.train_val_dataset = self.load_dataset('train_val', base_dataset, self.par.train.batch_size, start_train,
+                                                      end_val, shuffle=True, batch=batch)
 
     def train_to_find_hyperparams(self):
         best_reg = None
@@ -285,10 +288,8 @@ class PipelineTrainer:
 
     def train_on_val_and_train_with_best_hyper(self):
         print('Start the final training (train+val)', flush=True)
-        # Combine train and validation datasets
-        combined_dataset = self.train_dataset.concatenate(self.val_dataset)
         # Train the model using the best hyperparameters found
-        self.model = self.train_model(tr_data=combined_dataset, val_data=None, reg_to_use=self.best_hyper)
+        self.model = self.train_model(tr_data=self.train_val_dataset, val_data=None, reg_to_use=self.best_hyper)
 
     def get_prediction_on_test_sample(self):
         @tf.autograph.experimental.do_not_convert
@@ -330,7 +331,7 @@ class PipelineTrainer:
         df['accuracy'] = df['y_pred'] == df['y_true']
 
         evaluation_results = self.model.evaluate(
-            self.test_dataset_with_id.map(extract_features_and_labels),
+            self.test_dataset,
             return_dict=True
         )
         print('####### SANITY CHECK')
@@ -361,6 +362,9 @@ if __name__ == '__main__':
         par.train.max_epoch = 2
 
         # par.train.T_train = 1  # reduce the dataset size for faster training
+        
+        # Skip Normalisation
+        par.train.norm = None
 
         start = time.time()
 
