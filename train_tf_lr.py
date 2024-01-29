@@ -5,6 +5,7 @@ import pandas as pd
 import os
 
 from sklearnex import patch_sklearn
+
 patch_sklearn()
 
 import tqdm
@@ -31,9 +32,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
 from joblib import Parallel, delayed
 
+
 class PipelineTrainer:
     def __init__(self, par: Params):
-        self.X_train, self.y_train= None, None
+        self.X_train, self.y_train = None, None
         self.X_val, self.y_val = None, None
         self.X_test, self.y_test = None, None
         self.best_history = None
@@ -124,7 +126,7 @@ class PipelineTrainer:
     def extract_with_id(self, x):
         abret = next(filter(x.__contains__, ('abret', 'ret_m')))
         return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0), \
-        x['id'], x['date'], x['permno']
+            x['id'], x['date'], x['permno']
 
     @tf.autograph.experimental.do_not_convert
     def load_dataset(self, data_id, tfrecord_files, batch_size, start_year, end_year, return_id_too=False,
@@ -182,8 +184,10 @@ class PipelineTrainer:
         tfrecord_files = list(filter(filter_func, tfrecord_files))
         self.train_dataset = self.load_dataset('train', tfrecord_files, self.par.train.batch_size, start_train,
                                                end_train, shuffle=True, batch=batch)
-        self.val_dataset = self.load_dataset('val', tfrecord_files, self.par.train.batch_size, start_val, end_val, batch=batch)
-        self.test_dataset = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test, end_test, batch=batch)
+        self.val_dataset = self.load_dataset('val', tfrecord_files, self.par.train.batch_size, start_val, end_val,
+                                             batch=batch)
+        self.test_dataset = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test, end_test,
+                                              batch=batch)
         self.test_dataset_with_id = self.load_dataset('test', tfrecord_files, self.par.train.batch_size, start_test,
                                                       end_test, return_id_too=True, batch=batch)
 
@@ -197,14 +201,17 @@ class PipelineTrainer:
         def evaluate_model(C, X_train, y_train, X_val, y_val):
             pipe = Pipeline([
                 ('scaler', StandardScaler()),
-                ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=C, solver='saga', max_iter=65, verbose=1))
+                ('model',
+                 LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=C, solver='saga', max_iter=65, verbose=1))
             ])
             pipe.fit(X_train, y_train)
             score = accuracy_score(y_val, pipe.predict(X_val))
             return C, score
 
         # Parallel grid search
-        results = Parallel(n_jobs=2, pre_dispatch='1*n_jobs')(delayed(evaluate_model)(C, self.X_train, self.y_train, self.X_val, self.y_val) for C in self.par.train.shrinkage_list)
+        results = Parallel(n_jobs=2, pre_dispatch='1*n_jobs')(
+            delayed(evaluate_model)(C, self.X_train, self.y_train, self.X_val, self.y_val) for C in
+            self.par.train.shrinkage_list)
 
         best_coefficient, best_score = max(results, key=lambda x: x[1])
         self.best_hyper = best_coefficient
@@ -216,7 +223,9 @@ class PipelineTrainer:
         # Train final model on combined training and validation sets with the best hyperparameter
         pipe_final = Pipeline([
             ('scaler', StandardScaler()),
-            ('model', LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=75, n_jobs=1, verbose=1))
+            ('model',
+             LogisticRegression(penalty='elasticnet', l1_ratio=0.5, C=self.best_hyper, solver='saga', max_iter=75,
+                                n_jobs=1, verbose=1))
         ])
 
         # Combine the training and validation sets
@@ -240,8 +249,9 @@ class PipelineTrainer:
                              axis=0)
         tickers = np.concatenate(
             [ticker_batch.numpy().astype(int) for _, _, _, _, ticker_batch in trainer.test_dataset_with_id], axis=0)
-        dates = np.concatenate([date_batch.numpy().astype(str) for _, _, _, date_batch, _ in trainer.test_dataset_with_id],
-                               axis=0)
+        dates = np.concatenate(
+            [date_batch.numpy().astype(str) for _, _, _, date_batch, _ in trainer.test_dataset_with_id],
+            axis=0)
         results_df = pd.DataFrame({
             'id': ids,
             'date': dates,

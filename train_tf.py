@@ -151,7 +151,7 @@ class PipelineTrainer:
 
     @tf.autograph.experimental.do_not_convert
     def load_dataset(self, data_id, dataset, batch_size, start_year, end_year, include_id=False,
-                     shuffle=False, batch=True):
+                     shuffle=False, batch=True, cache=False):
         # Convert start_year and end_year to TensorFlow constants
         const_start_year = tf.constant(start_year, dtype=tf.int32)
         const_end_year = tf.constant(end_year, dtype=tf.int32)
@@ -169,6 +169,8 @@ class PipelineTrainer:
 
         if shuffle:
             dataset = dataset.shuffle(buffer_size=10000)
+        if cache:
+            dataset = dataset.cache()
         if batch:
             dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(10)
@@ -252,7 +254,7 @@ class PipelineTrainer:
         self.test_dataset_with_id = self.load_dataset('test', base_dataset, self.par.train.batch_size, start_test,
                                                       end_test, include_id=True, batch=batch)
         self.train_val_dataset = self.load_dataset('train_val', base_dataset, self.par.train.batch_size, start_train,
-                                                      end_val, shuffle=True, batch=batch)
+                                                      end_val, shuffle=True, batch=batch, cache=True)
 
     def train_to_find_hyperparams(self):
         best_reg = None
