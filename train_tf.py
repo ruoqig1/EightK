@@ -366,7 +366,7 @@ if __name__ == '__main__':
         # par.train.T_train = 1  # reduce the dataset size for faster training
         
         # Skip Normalisation
-        par.train.norm = None
+        # par.train.norm = None
 
         start = time.time()
 
