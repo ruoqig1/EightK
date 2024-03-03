@@ -194,16 +194,26 @@ class PipelineTrainer:
             normalization_layer.adapt(tr_data.map(lambda x, y: x))
             layers.append(normalization_layer)
 
-        layers.append(
-            tf.keras.layers.Dense(1, activation='sigmoid', input_shape=(self.input_dim,), kernel_regularizer=reg_to_use)
-        )
+        layers.extend([
+            tf.keras.layers.Dense(128, kernel_regularizer=reg_to_use),
+            tf.keras.layers.LeakyReLU(alpha=0.01), 
+            tf.keras.layers.Dropout(0.1),
+            tf.keras.layers.Dense(64, kernel_regularizer=reg_to_use),
+            tf.keras.layers.LeakyReLU(alpha=0.01),  
+            tf.keras.layers.Dropout(0.1),
+            tf.keras.layers.Dense(32, kernel_regularizer=reg_to_use),
+            tf.keras.layers.LeakyReLU(alpha=0.01), 
+            tf.keras.layers.Dense(1, activation='sigmoid', kernel_regularizer=reg_to_use)
+        ])
+
 
         model = tf.keras.models.Sequential(layers)
-        model.compile(optimizer=optimizer,
-                      loss='binary_crossentropy',
-                      metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(),
-                               tf.keras.metrics.Recall()],
-                      run_eagerly=True)
+        model.compile(
+            optimizer=optimizer,
+            loss='binary_crossentropy',
+            metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(),
+                    tf.keras.metrics.Recall()],
+        )
         model.summary()
 
         callbacks = [early_stop]
@@ -350,7 +360,7 @@ if __name__ == '__main__':
     # args = didi.parse()
     # print(args)
     # par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
-    for i in range(7, 8):
+    for i in range(7):
         par = get_main_experiments(i, train_gpu=True)
         par.enc.opt_model_type = OptModelType.OPT_125m
         par.enc.news_source = NewsSource.NEWS_SINGLE
@@ -358,10 +368,13 @@ if __name__ == '__main__':
         # Training args
         par.train.use_tf_models = True
         par.train.l1_ratio = [0.5]
-        par.train.batch_size = 128
+        par.train.batch_size = 32
         par.train.monitor_metric = 'val_auc'
-        par.train.patience = 3
-        par.train.max_epoch = 2
+        par.train.patience = 5
+        par.train.max_epoch = 12
+        par.train.adam_rate = 0.0001
+
+        par.train.tensorboard = True
 
         # par.train.T_train = 1  # reduce the dataset size for faster training
         
@@ -384,15 +397,16 @@ if __name__ == '__main__':
         if save_name in already_processed:
             print(f'Already processed {save_name}', flush=True)
         else:
-
             trainer = PipelineTrainer(par)
             trainer.def_create_the_datasets(
                 filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'),  # filter by 'mean' in file name
             )
             print('Preprocessing time', np.round((time.time() - start) / 60, 5), 'min', flush=True)
             # train to find which penalisation to use
-            trainer.train_to_find_hyperparams()
-            trainer.train_on_val_and_train_with_best_hyper()
+            # trainer.train_to_find_hyperparams()
+            # trainer.train_on_val_and_train_with_best_hyper()
+            trainer.model = trainer.train_model(tr_data=trainer.train_val_dataset, val_data=None, reg_to_use=tf.keras.regularizers.l1_l2(0.000005, 0.000005))
+            
             end = time.time()
             trainer.model.save(temp_save_dir + save_name + '_model.keras')
             print('Ran it all in ', np.round((end - start) / 60, 5), 'min', flush=True)
