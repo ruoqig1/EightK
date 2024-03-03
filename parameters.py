@@ -14,7 +14,6 @@ import os
 import hashlib
 
 
-
 ##################
 # Enum
 ##################
@@ -91,7 +90,8 @@ class Constant:
         MAIN_DIR = '/mnt/layline/project/eightk/'
         HUGGING_DIR = None
         HUGGING_DIR_TORCH = None
-    elif socket.gethostname() in ['Ruoqis-MacBook-Pro.local', 'ravpn-266-2-student-10-8-64-161.uniaccess.unimelb.edu.au']:
+    elif socket.gethostname() in ['Ruoqis-MacBook-Pro.local', 'ravpn-266-2-student-10-8-64-161.uniaccess.unimelb.edu.au',
+                                  'Ruoqis-MBP.net']:
         MAIN_DIR = '/Users/ruoqig/punim2039/EightK/'
         HUGGING_DIR = '/Users/ruoqig/punim2039/hugging/'
         HUGGING_DIR_TORCH = '/Users/ruoqig/punim2039/hugging_torch/'
