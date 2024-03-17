@@ -399,7 +399,7 @@ if __name__ == '__main__':
         else:
             trainer = PipelineTrainer(par)
             trainer.def_create_the_datasets(
-                filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'),  # filter by 'mean' in file name
+                filter_func=lambda x: 'mean' not in x.split('/')[-1].split('_'),  # filter by 'mean' in file name
             )
             print('Preprocessing time', np.round((time.time() - start) / 60, 5), 'min', flush=True)
             # train to find which penalisation to use
