@@ -19,7 +19,6 @@ if __name__ == "__main__":
     par = Params()
     data = Data(par)
 
-
     year_list = np.unique(np.sort([int(f.split('_')[1].split('.')[0]) for f in os.listdir(data.p_eight_k_clean)]))
     print(year_list,flush=True)
     print(args.a,flush=True)

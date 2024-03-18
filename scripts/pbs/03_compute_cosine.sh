@@ -33,7 +33,7 @@ for i in $(seq $lower_limit $upper_limit); do
 #PBS -l walltime=12:00:00
 #PBS -l storage=scratch/nz97
 #PBS -l mem=380GB
-#PBS -l ncpus=4
+#PBS -l ncpus=64
 #PBS -M antoine.didisheim@unimelb.edu.au
 #PBS -m ${email_flag}
 #PBS -N hugemem${i}
@@ -50,3 +50,4 @@ EOL
   # Sleep for a moment if needed to avoid overwhelming the job scheduler
   sleep 3
 done
+

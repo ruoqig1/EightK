@@ -1,28 +1,14 @@
-import os
-
-import pandas as pd
-import pyperclip
-import tqdm
-
-from parameters import *
-from data import Data
-import didipack as didi
-from matplotlib import pyplot as plt
-import seaborn as sns
-from didipack import PandasPlus, PlotPlus
-from scipy.stats import ttest_ind
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
-import sys
-from utils_local.zip import decompress_gz_file, unzip_all
-import json
 import glob
-import itertools
+import json
 import re
+import didipack as didi
+import tqdm
+from data import Data
+from parameters import *
+from utils_local.zip import unzip_all
 
 def find_tickers_in_markup(text):
     return re.findall(r'<(.*?)>', text)
-
 
 if __name__ == "__main__":
     args = didi.parse() #28 variations

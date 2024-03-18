@@ -21,6 +21,8 @@ scp -r ~/.ssh/ ./data/p/load_bryan_data.p adidishe@spartan.hpc.unimelb.edu.au:/d
 scp -r ~/.ssh/ ./data/p/rel_max.p adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK//data/p/
 
 
+scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/tfidf/* ./data/tfidf/
+
 scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/rel_max.p /scratch/nz97/ad4734/EightK/data/p/
 scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/load_bryan_data.p /scratch/nz97/ad4734/EightK/data/p/
 scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/load_control_coverage.p /scratch/nz97/ad4734/EightK/data/p/
@@ -29,3 +31,6 @@ scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim203
 
 
 # nohup scp -r ~/.ssh/  adidishe@spartan.hpc.unimelb.edu.au:/data/gpfs/projects/punim2039/EightK/data/p/*.p /scratch/nz97/ad4734/EightK/da &
+
+
+# ./data/vec_merged_df/

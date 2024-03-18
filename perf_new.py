@@ -9,7 +9,7 @@ from didipack.trainer.trainer_ridge import TrainerRidge
 from didipack.trainer.train_splitter import get_start_dates,get_chunks,get_tasks_for_current_node
 import psutil
 from train_main import set_ids_to_eight_k_df
-from experiments_params import get_main_experiments
+from experiments_params import *
 from scipy import stats
 
 def current_memory_usage():
@@ -49,10 +49,11 @@ if __name__ == "__main__":
     temp_dir ='res/model_tf_ati_2/'
     temp_dir ='res/model_tf_ati_news_var/'
     temp_dir ='res/model_tf_ati_dec/'
+    temp_dir ='res/model_tf_ati_dec_spartan/'
     os.makedirs(temp_dir,exist_ok=True)
-    for i in range(24):
+    for i in range(12):
     # for i in [0]:
-        par = get_main_experiments(i,train=False)
+        par = get_main_experiments_train_all(i,train=False)
         try:
             df = load_res(par)
             df.to_pickle(f'{temp_dir}/new_{i}.p')

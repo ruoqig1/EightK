@@ -19,7 +19,6 @@ if __name__ == "__main__":
 
     par = Params()
     data = Data(par)
-    save_csv_for_attila = False
     use_reuters_news = False
     use_rav_cov_news_v2 = False
     winsorise_ret = -1
@@ -41,10 +40,9 @@ if __name__ == "__main__":
     # for news_columns in ['news0', 'news0_nr', 'news_with_time', 'news_with_time_nr']:
     for news_columns in ['news0']:
         for model_index in [1]:
-            for nb_factors in [7,2,3]:
-
+            for nb_factors in [7]:
                 save_csv = Constant.DRAFT_1_CSV_PATH +f'MAIN_PLOT_modelid_{model_index}_factorid_{nb_factors}_newstype_{news_columns}'
-                save_dir = Constant.EMB_PAPER + f'fig_exp/A/{news_columns.replace("_","")}/{model_index}/'
+                save_dir = Constant.EMB_PAPER + f'/news/'
                 os.makedirs(save_dir,exist_ok=True)
                 if use_ati:
                     print('load new')
@@ -72,9 +70,6 @@ if __name__ == "__main__":
 
                 df= df.groupby(['date','permno',news_columns,'release'])['pred_prb','abret'].mean().reset_index()
                 df['pred']  = np.sign(df['pred_prb']-0.5)
-                if save_csv_for_attila:
-                    breakpoint()
-                    df[['date','permno','pred_prb','pred']].to_csv(Constant.DRAFT_1_CSV_PATH+f'prediction_of_model_{model_index}.csv', index=False)
                 # df['pred']  = np.sign(df['pred_prb']-df['pred_prb'].mean())
                 # df['pred']  = np.sign(df['pred_prb']-df.groupby(df.date.dt.year)['pred_prb'].transform('mean'))
 
@@ -129,7 +124,6 @@ if __name__ == "__main__":
                 df['pred_rnd_2'] = np.sign(np.random.normal(size=df['pred'].shape)+0.5)
 
 
-                fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))  # 2 subplots side by side
                 n_list = [False,True] if use_relase else [0,1]
                 k = 0
                 for n in n_list:
@@ -140,13 +134,14 @@ if __name__ == "__main__":
                     m = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].mean().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
                     s = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[sigma_col].mean().reset_index().pivot(columns=pred_col, index='evttime', values=sigma_col)
                     c = df.loc[ind_time & ind & size_ind, :].groupby(['evttime', pred_col])[start_ret].count().reset_index().pivot(columns=pred_col, index='evttime', values=start_ret)
-                    plt.subplot(2,2,k)
                     print(n)
                     covered_txt = '_split_covered' if n ==1 else '_split_uncovered'
                     plot_ev(m, s, c, do_cumulate=True, label_txt='Prediciton', save_csv_path_and_name=save_csv+f'{covered_txt}.csv')
                     plt.tight_layout()
                     plt.title(f'{n}')
                     plt.tight_layout()
+                    plt.savefig(save_dir+f'car_n{int(n*1)}')
+                    plt.show()
 
                 # LONG SHORT EV
                 df['sign_ret'] = df[start_ret]*df[pred_col]
@@ -155,12 +150,13 @@ if __name__ == "__main__":
                 s = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])[sigma_col].mean().reset_index().pivot(columns=news_columns, index='evttime', values=sigma_col)
                 c = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])['sign_ret'].count().reset_index().pivot(columns=news_columns, index='evttime', values='sign_ret')
                 k+=1
-                plt.subplot(2, 2, k)
+
                 plot_ev(m,s,c,do_cumulate = True,label_txt = 'PR' if use_relase else 'Covered', save_csv_path_and_name=save_csv+'_long_short_equally_weighted.csv')
                 plt.tight_layout()
                 plt.title('LONG SHORT EW')
                 plt.tight_layout()
-
+                plt.savefig(save_dir + f'ls_ew')
+                plt.show()
 
                 size_ind = df['mcap_d']<=8
                 df['w_ret2'] = df[start_ret]*df['mcap']
@@ -174,18 +170,10 @@ if __name__ == "__main__":
                 s = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])[sigma_col].mean().reset_index().pivot(columns=news_columns, index='evttime', values=sigma_col)
                 c = df.loc[ind_time & size_ind, :].groupby(['evttime', news_columns])['w_ret2'].count().reset_index().pivot(columns=news_columns, index='evttime', values='w_ret2')
                 k+=1
-                plt.subplot(2, 2, k)
                 plot_ev(m, s, c, do_cumulate = True, label_txt = 'PR' if use_relase else 'Covered', save_csv_path_and_name=save_csv+'_long_short_value_weighted.csv')
 
 
-                # par.train.abny,par.train.l1_ratio, par.train.norm.name
-                plt.title(n)
                 plt.tight_layout()
-                os.makedirs(save_dir,exist_ok=True)
-                save_dest  =save_dir+f'fact{nb_factors}.png'
-                plt.savefig(save_dest)
-                print('saved to ',save_dest)
+                plt.savefig(save_dir + f'ls_vw')
                 plt.show()
-            # for model_index in range(12):
-
 

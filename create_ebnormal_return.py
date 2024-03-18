@@ -25,6 +25,7 @@ def load_and_preprocess_v2(par):
     ev = per[['date','permno','form_id']].dropna().drop_duplicates()
     ev['ev']= True
 
+
     # load ff and merge
     ff = data.load_ff5()
     df = df.merge(ff)
@@ -32,18 +33,20 @@ def load_and_preprocess_v2(par):
     df = df.merge(ev,how='left')
     # df['mktrf']=np.random.normal(size=df.shape[0])
     df['ev'] = df['ev'].fillna(False)
+    # random event check to debug
+    # df['ev'] = (np.random.uniform(size=df.shape[0])>0.99)
+
     print(df['ev'].sum(),ev.shape,df['ev'].mean(),flush=True)
 
     df = df.sort_values(['permno','date'])
     df = df.reset_index(drop=True)
-    df['one'] = 1.0
+    df['one'] = 1.
     return df
 
 
 
 def process_group(gp,remove_alpha = False):
     res_list = []
-
 
     for i in gp[1].index[gp[1]['ev']]:
         train = gp[1].loc[(i - rolling_window - gap_window):(i - gap_window), ['ret'] + mkt_col]
@@ -76,26 +79,35 @@ if __name__ == "__main__":
     data = Data(par)
     df = load_and_preprocess_v2(par)
 
+    df.memory_usage(deep=True).sum() / (1024 ** 3)
+    df.shape[0]/1e6
+
     ev_window = 20
     gap_window = 50
     rolling_window = 100
     min_rolling = 70
     min_test = 41
 
-    mkt_col = ['mktrf', 'one']
-    name = 'abn_ev_m.p'
+    # older versions that were runs
+    # mkt_col = ['mktrf', 'one']
+    # name = 'abn_ev_m.p'
+    #
+    # mkt_col = ['mktrf']
+    # name = 'abn_ev_monly.p'
+    #
+    # mkt_col = ['mktrf','smb','hml','rmw','cma','umd']
+    # name = 'abn_ev6_monly.p'
+    #
+    # mkt_col = ['mktrf','smb','hml']
+    # name = 'abn_ev3_monly.p'
 
-    mkt_col = ['mktrf']
-    name = 'abn_ev_monly.p'
-
-    mkt_col = ['mktrf','smb','hml','rmw','cma','umd']
-    name = 'abn_ev6_monly.p'
-
-    mkt_col = ['mktrf','smb','hml']
-    name = 'abn_ev3_monly.p'
-
+    # running current version
     mkt_col = ['mktrf','smb','hml','rmw','cma','umd','one']
     name = 'abn_ev6_long.p'
+
+    # running current version check rf
+    # mkt_col = ['mktrf','smb','hml','rmw','cma','umd','one']
+    # name = 'abn_ev67_check_rf.p'
 
 
 
@@ -103,9 +115,12 @@ if __name__ == "__main__":
 
     # Using tqdm to monitor the progress
     groups = list(df.groupby('permno'))
-    print('new again')
 
     results = Parallel(n_jobs=n_jobs)(delayed(process_group)(gp) for gp in tqdm(groups, desc="Processing groups"))
+    # results = []
+    # for gp in tqdm(groups, desc="Processing groups"):
+    #     result = process_group(gp)
+    #     results.append(result)
 
     res = pd.concat([r for r in results if r is not None], axis=0)
 
@@ -118,3 +133,5 @@ if __name__ == "__main__":
     print(res)
     print('avg beta',res['beta'].mean())
 
+    res.groupby('evttime')['abret'].mean().cumsum().plot()
+    plt.show()

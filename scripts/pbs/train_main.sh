@@ -5,7 +5,7 @@ chmod +x $0
 
 # Define the upper limit as a variable
 lower_limit=0
-upper_limit=263
+upper_limit=132
 # Loop from 0 to 395
 for i in $(seq $lower_limit $upper_limit); do
 
@@ -32,7 +32,7 @@ for i in $(seq $lower_limit $upper_limit); do
 #PBS -l walltime=10:00:00
 #PBS -l storage=scratch/nz97
 #PBS -l mem=96GB
-#PBS -l ncpus=4
+#PBS -l ncpus=48
 #PBS -M antoine.didisheim@unimelb.edu.au
 #PBS -m ${email_flag}
 #PBS -N train_new_${i}
