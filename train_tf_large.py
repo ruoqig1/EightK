@@ -1,3 +1,8 @@
+#################################
+#   Larger Model with 3 Layers
+#################################
+
+
 import didipack as didi
 import numpy as np
 import pandas as pd
@@ -360,7 +365,7 @@ if __name__ == '__main__':
     # args = didi.parse()
     # print(args)
     # par = get_main_experiments(args.a, train_gpu=args.cpu == 0)
-    for i in [5]:
+    for i in range(7):
         par = get_main_experiments(i, train_gpu=True)
         par.enc.opt_model_type = OptModelType.OPT_125m
         par.enc.news_source = NewsSource.NEWS_SINGLE
@@ -406,6 +411,8 @@ if __name__ == '__main__':
             # train to find which penalisation to use
             # trainer.train_to_find_hyperparams()
             # trainer.train_on_val_and_train_with_best_hyper()
+
+            # This is a known good regulariser to save from testing for it everytime.
             trainer.model = trainer.train_model(tr_data=trainer.train_val_dataset, val_data=None, reg_to_use=tf.keras.regularizers.l1_l2(0.000005, 0.000005))
             
             end = time.time()

@@ -1,3 +1,7 @@
+##########################################
+#   Logistic Regression from SKLearn
+##########################################
+
 import didipack as didi
 import joblib
 import numpy as np
