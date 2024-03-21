@@ -12,7 +12,7 @@ from didipack.trainer.train_splitter import get_start_dates,get_chunks,get_tasks
 import psutil
 from utils_local.general import *
 from utils_local.trainer_specials import *
-from experiments_params import get_main_experiments
+from experiments_params import get_main_experiments,get_main_experiments_train_all
 
 def load_data_for_this_chunks(par: Params):
     # load the correct data
@@ -96,7 +96,7 @@ def generate_fake_data(N: int = 1000, P: int = 100) -> Tuple[pd.DataFrame, pd.Da
 if __name__ == "__main__":
     args = didi.parse()
     print('START WORKING ON ',args.a,flush=True)
-    par = get_main_experiments(args.a, train=True)
+    par = get_main_experiments_train_all(args.a, train=True)
     print('Parameter defined',flush=True)
     par.print_values()
     trainer = chose_trainer(par)

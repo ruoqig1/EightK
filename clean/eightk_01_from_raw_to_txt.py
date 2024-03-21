@@ -39,10 +39,6 @@ def remove_html_tags(text):
     return re.sub(clean, '', text)
 
 
-
-
-
-
 def get_items_number_and_text_clean(list_of_item_locations_string:[], idx: int):
     item = (found_number_of_section_in_some_string(list_of_item_locations_string[idx]))
     if idx == len(list_of_item_locations_string) - 1:
@@ -209,10 +205,8 @@ if __name__ == "__main__":
     # launch 20 different ones.
     year_todo =np.arange(2004,2024,1)[grid_id]
 
-
     par = Params()
     data = Data(par)
-
 
     # icf = load_csv()
     if Constant.IS_VM:

@@ -26,8 +26,8 @@ if __name__ == "__main__":
     news_columns = 'news_with_time' # 'news0_nr','news_with_time_nr','news_with_time'
     # news_columns = 'news_with_time'
     do_cumulate = True
-    # t_val = 1.96
-    t_val = 2.58
+    t_val = 1.96
+    # t_val = 2.58
     use_relase = False
     pred_col = 'pred'
     # pred_col = 'pred_rnd_2'
@@ -41,62 +41,61 @@ if __name__ == "__main__":
     # for news_columns in ['news0', 'news0_nr', 'news_with_time', 'news_with_time_nr']:
     for news_columns in ['news0']:
         for model_index in [1]:
-            for nb_factors in [7,2,3]:
-
+            for nb_factors in [66]:
                 save_csv = Constant.DRAFT_1_CSV_PATH +f'MAIN_PLOT_modelid_{model_index}_factorid_{nb_factors}_newstype_{news_columns}'
                 save_dir = Constant.EMB_PAPER + f'fig_exp/A/{news_columns.replace("_","")}/{model_index}/'
                 os.makedirs(save_dir,exist_ok=True)
-                if use_ati:
-                    print('load new')
-                    load_dir = Constant.PATH_TO_MODELS_NOW
-                    os.listdir(load_dir)
-                    df = pd.read_pickle(load_dir + f'new_{model_index}.p')
-                    par = Params()
-                    par.load(load_dir, f'/par_{model_index}.p')
-                else:
-                    df, par = data.load_ml_forecast_draft_1()
+
+                # load the model prediciton
+                load_dir = Constant.PATH_TO_MODELS_NOW
+                os.listdir(load_dir)
+                df = pd.read_pickle(load_dir + f'new_{model_index}.p')
+                par = Params()
+                par.load(load_dir, f'/par_{model_index}.p')
+                par.print_values()
+
                 t=data.load_ati_cleaning_df()[['form_id','permno']].drop_duplicates()
                 t['form_id'] = t['form_id'].apply(lambda x: x.replace('-',''))
-                more_news = data.load_icf_ati_filter(False,False)
-                # more_news=more_news[['date','permno','news0_nr','news_with_time_nr','news_with_time']].drop_duplicates()
-                more_news=more_news[['date','permno','news_with_time']].drop_duplicates()
+                filter_of_ati_to_drop_wrong_forms = data.load_icf_ati_filter(False, False)
+                filter_of_ati_to_drop_wrong_forms=filter_of_ati_to_drop_wrong_forms[['date', 'permno']].drop_duplicates()
                 df = df.drop(columns='permno').merge(t)
-                df = df.merge(more_news)
+                df = df.merge(filter_of_ati_to_drop_wrong_forms)
+                # change the news0
+                df = df.drop(columns = 'news0')
+                news = data.load_news0_post_ati_change()
+                news['form_id'] = news['form_id'].apply(lambda x: x.replace('-',''))
+                news['news0']*=1
+                df = df.merge(news)
 
-                print(df.groupby(df['date'].dt.year)['permno'].count())
-                if use_relase:
-                    df = df.merge(data.get_press_release_bool_per_event())
-                else:
-                    df['release'] = 1
-                print(df.columns)
+                model_factor = 6
+                if model_factor != 66:
+                    ind = pd.to_datetime(df['atime'], format='%H%M%S').dt.hour>16
+                    df.loc[ind,'date']+=pd.DateOffset(days=1)
+                    ind_friday = df['date'].dt.dayofweek == 4
+                    df.loc[ind & ind_friday,'date']+=pd.DateOffset(days=2)
 
-                df= df.groupby(['date','permno',news_columns,'release'])['pred_prb','abret'].mean().reset_index()
+
+
+
+                df= df.groupby(['date','permno',news_columns])['pred_prb','abret'].mean().reset_index()
                 df['pred']  = np.sign(df['pred_prb']-0.5)
                 if save_csv_for_attila:
-                    breakpoint()
                     df[['date','permno','pred_prb','pred']].to_csv(Constant.DRAFT_1_CSV_PATH+f'prediction_of_model_{model_index}.csv', index=False)
-                # df['pred']  = np.sign(df['pred_prb']-df['pred_prb'].mean())
-                # df['pred']  = np.sign(df['pred_prb']-df.groupby(df.date.dt.year)['pred_prb'].transform('mean'))
 
-                if use_rav_cov_news_v2:
-                    rav = data.load_rav_coverage_split_by(False)
-                    df = df.merge(rav,how='left').fillna(0.0)
-                    df[news_columns] = 1.0*(df['article']>0)
-
-                if use_relase:
-                    df[news_columns] = df['release']
                 df['pred'] = df['pred'].replace({0:1})
-
                 df['acc'] = df['pred']==np.sign(df['abret'])
 
-                print(par.train.abny,par.train.l1_ratio, par.train.norm.name)
+                ev = data.load_abn_return(model=model_factor,with_alpha=False)
+                # ev = data.load_abn_return(model=6,with_alpha=False)
+                print(ev)
+                ev.groupby('evttime')['abret'].mean().cumsum().plot()
+                plt.show()
 
-                # acc = df.groupby('items')['acc'].aggregate(['mean','count']).sort_values('mean')
-                # item_to_keep = acc.loc[acc['count']>50,:].index
 
-                # df = df.loc[~df['items'].isin([5.06,5.01,4.02]),:]
-                # df = df.loc[df['items'].isin(item_to_keep),:]
-                ev = data.load_abn_return(model=nb_factors,with_alpha=False)
+                ev['date'] = pd.to_datetime(ev['date'])
+                ff = data.load_ff5()[['date','rf']]
+                # ev = ev.merge(ff)
+                # ev['abret'] += ev['rf']
 
                 if winsorise_ret>0:
                     for model_index in tqdm.tqdm(ev['evttime'].unique(), 'winsorize'):
@@ -104,23 +103,18 @@ if __name__ == "__main__":
                         ev.loc[ind,'abret'] = PandasPlus.winzorize_series(ev.loc[ind,'abret'], winsorise_ret)
                         ev.loc[ind,'ret'] = PandasPlus.winzorize_series(ev.loc[ind,'ret'], winsorise_ret)
 
-
                 df=df[['pred',news_columns,'date','permno']].merge(ev)
                 df['year'] = df['date'].dt.year
                 df = df.merge(data.load_mkt_cap_yearly())
 
-                df['good_eight_k'] = df['abret'] > 0
                 df['year'] = df['date'].dt.year
-
-                # df.groupby(['permno', 'mcap_d'])['good_eight_k'].mean().reset_index().groupby('mcap_d')['good_eight_k'].mean().plot()
-                # plt.show()
 
                 df = df.dropna()
 
                 df['pred'].mean()
-                ind_time = (df['evttime']>=-3) & (df['evttime']<= 40)
-                ind_time = (df['evttime']>=-3) & (df['evttime']<= 15)
-                # ind_time = (df['evttime']>=-1) & (df['evttime']<= 60)
+                # ind_time = (df['evttime']>=-3) & (df['evttime']<= 15)
+                # ind_time = (df['evttime']>=-10) & (df['evttime']<= 15)
+                ind_time = (df['evttime']>=-10) & (df['evttime']<= 60)
 
 
                 size_ind = df['mcap_d']<=10

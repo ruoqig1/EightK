@@ -649,7 +649,7 @@ class Data:
             df = pd.read_pickle(self.p_dir + 'load_return_for_nlp_on_eightk.p')
         return df
 
-    def load_abn_return(self, model=1, with_alpha=False):
+    def load_abn_return(self, model=1, with_alpha=False,reload=False):
         if model == 1:
             df = pd.read_pickle(self.p_dir + 'abn_ev_m.p')
         if model == 2:
@@ -663,6 +663,21 @@ class Data:
             df = pd.read_pickle(self.p_dir + 'abn_ev6_long_monly.p')
         elif model == 3:
             df = pd.read_pickle(self.p_dir + 'abn_ev3_monly.p')
+        elif model == 66:
+            # load the ati csv (and covnert it if reload)
+            if reload:
+                df = pd.read_csv(Constant.DRAFT_1_CSV_PATH+'b01-30-currReportsPanel.csv')
+                df = df[['acceptanceDatetime','permno','date_ret','ret','exret','evttime','abret7','se_residual','beta']]
+                df = df.rename(columns={
+                    'abret7':'abret',
+                    'se_residual':'sigma_ra'
+                })
+                df['date'] = pd.to_datetime(df['acceptanceDatetime']).dt.date
+                df = df[['evttime','abret','ret','date','permno','sigma_ra','date_ret']].drop_duplicates()
+                df.to_pickle(self.p_dir+'abn_ati_66_version.py')
+            else:
+                df = pd.read_pickle(self.p_dir+'abn_ati_66_version.py')
+
         elif model == -1:
             # use volume
             df = pd.read_pickle(self.p_dir + 'trun_ev_monly.p')
@@ -909,8 +924,9 @@ class Data:
         if reload:
             df = pd.read_csv(self.raw_dir + 'currReportsPanel.csv')
             df['acceptanceDate'] = np.floor(df['acceptanceDatetime'] / 1000000).astype(int)
+            df['atime'] = df['acceptanceDatetime'].apply(lambda x: str(x)[8:])
             df = df.loc[df['stable'] == 1, :]
-            df = df[['acceptanceDate', 'accessionNumber', 'permno', 'mktEquityEvent']]
+            df = df[['acceptanceDate', 'accessionNumber', 'permno','atime', 'mktEquityEvent']]
             df = df.rename(columns={'acceptanceDate': 'adate', 'accessionNumber': 'form_id', 'mktEquityEvent': 'mcap_e', 'avgVol': 'avg_vol'})
             df['adate'] = pd.to_datetime(df['adate'], format='%Y%m%d')
             df['permno'] = df['permno'].astype(int)
@@ -1019,6 +1035,57 @@ class Data:
         df = pd.read_pickle(self.p_dir + 'log_ip_small.p')
         return df
 
+    def load_news0_post_ati_change(self,reload = False):
+        if reload:
+            rav = self.load_ravenpack_all()
+
+            rav = rav.loc[rav['relevance'] > 0, :]
+            rav = rav.rename(columns={'rdate': 'date'})
+            rav['afternoon_news'] = rav['rtime'].apply(lambda x: int(str(x)[:2]) >= 16) * 1
+            rav['afternoon_news'].mean()
+
+            # we find news that are published during the day and market hours. So news that could influence price of a news coming out during or before market hours today
+            news_on_same_day = rav.loc[rav['afternoon_news'] == 0, :].groupby(['date', 'permno'])['rtime'].max().reset_index()
+            news_on_same_day['news_on_same_day'] = 1
+            news_on_same_day = news_on_same_day.rename(columns={'rtime': 'rtime_same_day'})
+
+            # we find the news that happens the next day (by pushing date back) and during market hours. So news that could influence price of an 8k published yesterday afternoon
+            news_next_day = rav.loc[rav['afternoon_news'] == 0, ['date', 'permno']].drop_duplicates().copy()
+            news_next_day['date'] = news_next_day['date'] - pd.DateOffset(days=1)
+            news_next_day['news_next_day'] = 1.0
+
+            # finally, for news published after market hours we also caputre evening news.
+            news_on_afternoon = rav.loc[rav['afternoon_news'] == 1, :].groupby(['date', 'permno'])['rtime'].max().reset_index()
+            news_on_afternoon['news_on_afternoon'] = 1
+            news_on_afternoon = news_on_afternoon.rename(columns={'rtime': 'rtime_afternoon'})
+
+            ati = self.load_ati_cleaning_df()
+            ati = ati.rename(columns={'adate': 'date'})
+            ati['atime'] = pd.to_datetime(ati['atime'], format='%H%M%S').dt.time
+            ati = ati.merge(news_next_day, how='left')
+            ati = ati.merge(news_on_same_day, how='left')
+            ati = ati.merge(news_on_afternoon, how='left')
+
+            ati['news_on_afternoon'] = ati['news_on_afternoon'].fillna(0.0)
+            ati['news_on_same_day'] = ati['news_on_same_day'].fillna(0.0)
+            ati['news_next_day'] = ati['news_next_day'].fillna(0.0)
+
+            ind_afternoon_atime = ati['atime'].apply(lambda x: x.hour) >= 16
+            # check if a news came out in the afternoon after an afternoon 8k
+            n1 = (ind_afternoon_atime == True) & (ati['news_on_afternoon'] == 1) & (ati['rtime_afternoon'] >= ati['atime'])
+            # check if a news came out during the day after an 8k during or before market hours
+            n2 = (ind_afternoon_atime == False) & (ati['news_on_same_day'] == 1) & (ati['rtime_same_day'] >= ati['atime'])
+            # check if a news came out the day after an afternoon pub and during next day market hours (accounted for earlier in code)
+            n3 = (ind_afternoon_atime == True) & (ati['news_next_day'] == 1)
+
+            ati['news0'] = (n1 | n2 | n3)
+
+            ati[['date', 'form_id', 'news0']].to_pickle(self.p_dir + 'news0_post_ati_change.p')
+        else:
+            ati = pd.read_pickle(self.p_dir+'news0_post_ati_change.p')
+        return ati
+
+
 
 if __name__ == "__main__":
     try:
@@ -1029,12 +1096,4 @@ if __name__ == "__main__":
         grid_id = -2
 
     self = Data(Params())
-
-    #
-    # df = pd.read_csv(self.raw_dir + 'crsp_with_vol.csv')
-    #
-    # df.head(10000).to_csv('/Users/adidisheim/Dropbox/Melbourne/teaching/DSF_intro/data/raw/crsp_with_vol.csv')
-    #
-    # ff = pd.read_csv(self.raw_dir + 'ff5.csv')
-    # ff['date'] = pd.to_datetime(ff['date'])
-    # ff.to_csv('/Users/adidisheim/Dropbox/Melbourne/teaching/DSF_intro/data/raw/ff5.csv')
+    # self.load_news0_post_ati_change(reload=True)
