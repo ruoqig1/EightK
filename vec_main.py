@@ -96,9 +96,9 @@ def drop_already_process_text_from_df(df, par):
 
 def load_and_process_news_one_stock_ref_or_third(par, args, ref_or_thrid_party='ref'):
     if ref_or_thrid_party =='ref':
-        batch_size = 20
+        batch_size = 1
     else:
-        batch_size = 20
+        batch_size = 1
 
     if par.enc.opt_model_type == OptModelType.BOW1:
         save_size = 10000
@@ -129,6 +129,7 @@ if __name__ == "__main__":
     args = didi.parse()  # --legal=0/1 --eight=0/1 |  19 variations for legal eight
     # BUILD THE MODEL AND DEFINE PARAMETERS
     par = Params()
+    par.enc.framework = Framework.TENSORFLOW
     if socket.gethostname() == '3330L-214940-M':
         # (local debug)
         par.enc.opt_model_type = OptModelType.BOW1
@@ -138,8 +139,8 @@ if __name__ == "__main__":
         # launch the vectorisation
         vectorise_in_batch(id_col=id_col, df=df, save_size=save_size, batch_size=batch_size, par=par, year=year)
     else:
-        # par.enc.opt_model_type = OptModelType.OPT_13b
-        par.enc.opt_model_type = OptModelType.OPT_6b7
+        par.enc.opt_model_type = OptModelType.OPT_13b
+        # par.enc.opt_model_type = OptModelType.OPT_6b7
         if args.small == 1:
             print('encodign small')
             par.enc.opt_model_type = OptModelType.OPT_125m
@@ -148,7 +149,7 @@ if __name__ == "__main__":
     else:
         # if not encoding in bow, we now use the pytorch setup
         par.enc.framework = Framework.TENSORFLOW
-        par.enc.opt_model_type = OptModelType.OPT_125m
+        par.enc.opt_model_type = OptModelType.OPT_13b
 
     if args.eight == 1:
         if args.legal == 1:

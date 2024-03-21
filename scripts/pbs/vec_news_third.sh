@@ -39,7 +39,7 @@ for i in $(seq $lower_limit $upper_limit); do
 #PBS -o out/vec_news_third_${i}.out
 #PBS -e out/vec_news_third_${i}.err
 
-cd /scratch/nz97/ad4734/EightK/
+cd
 module load python3/3.10.4
 source ~/scratch/nz97/ad4734/venv/bin/activate
 python vec_main.py ${i} --legal=0 --eight=0 --news=1 --ref=0 --bow=1

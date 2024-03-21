@@ -109,6 +109,7 @@ class Constant:
     TRI_PAPER = os.path.join(HOME_DIR, 'Dropbox/Apps/Overleaf/053-TRI/res/')
     DROPBOX_COSINE_DATA = os.path.join(HOME_DIR, 'Dropbox/AB-AD_Share/cosine/data/')
 
+    PATH_TO_MODELS_NOW = 'res/model_tf_ati_dec_spartan/'
 
     COLOR_DUO = ['k', 'b']
     COLOR_TRIO = ['k', 'b','g']

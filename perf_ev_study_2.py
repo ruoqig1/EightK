@@ -22,8 +22,8 @@ if __name__ == "__main__":
     use_reuters_news = False
     use_rav_cov_news_v2 = False
     nb_factors = 7
-    nb_groups = 10
-    for nb_factors in [7,1,2,3,6]:
+    nb_groups = 3
+    for nb_factors in [7]:
     # for nb_factors in [7]:
         winsorise_ret = -1
         do_cumulate = True
@@ -37,12 +37,13 @@ if __name__ == "__main__":
         start_ret ='abret'
         sigma_col = 'sigma_ret_train' if start_ret == 'ret' else 'sigma_ra'
         model_index = 1 # 2 is our main 1 is ok with atis...
-        save_dir = 'res/polt_quantile_decile/'
+
+        save_dir = Constant.EMB_PAPER + 'fig_exp/B/'
+        for model_index in [1]:
         # for model_index in range(12):
-        for model_index in range(24):
             if use_ati:
                 print('load new')
-                load_dir = 'res/model_tf_ati_dec/'
+                load_dir = Constant.PATH_TO_MODELS_NOW
                 os.listdir(load_dir)
                 df = pd.read_pickle(load_dir + f'new_{model_index}.p')
                 par = Params()
@@ -99,11 +100,12 @@ if __name__ == "__main__":
             df = df.dropna()
 
             ind_time = (df['evttime']>=-5) & (df['evttime']<= 40)
-            ind_time = (df['evttime']>=-2) & (df['evttime']<= 40)
-
+            ind_time = (df['evttime']>=-3) & (df['evttime']<= 15)
 
             size_ind = df['mcap_d']<=10
             if nb_groups == 10:
+                size_ind_list = [df['mcap_d']<=10] + [df['mcap_d']==(i+1) for i in range(10)]
+            elif nb_groups == 3:
                 size_ind_list = [df['mcap_d']<=10] + [df['mcap_d']==(i+1) for i in range(10)]
             else:
                 size_ind_list = [df['mcap_d']<=10] + [df['mcap_d'].between((i*2)-1,i*2) for i in range(1,6)]

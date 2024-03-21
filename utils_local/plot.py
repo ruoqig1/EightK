@@ -23,7 +23,7 @@ def plot_ev_no_conf(m,do_cumulate = True,label_txt = 'News',t_val =2.58, ax =Non
         ax.legend()
         ax.grid()
         ax.set_title(title)
-def plot_ev(m,s,c,do_cumulate = True,label_txt = 'News',t_val =2.58, ax =None,title = ''):
+def plot_ev(m, s, c, do_cumulate = True, label_txt = 'News', t_val =2.58, ax =None, title = '', save_csv_path_and_name = None):
     if do_cumulate:
         m = m.cumsum()
         s = np.sqrt((s ** 2).cumsum())
@@ -47,7 +47,11 @@ def plot_ev(m,s,c,do_cumulate = True,label_txt = 'News',t_val =2.58, ax =None,ti
         ax.legend()
         ax.grid()
         ax.set_title(title)
-
+    if save_csv_path_and_name is not None:
+        m.columns = [f'mean: {label_txt} = {x}' for x in m.columns]
+        s.columns = [f'std: {label_txt} = {x}' for x in s.columns]
+        to_save_df = pd.concat([m,s],axis=1)
+        to_save_df.to_csv(save_csv_path_and_name)
 
 def apply_ttest(group,group_col ='no_rel',y_col ='abret_abs'):
     group1 = group[group[group_col] == 0][y_col]

@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
 
     temp = df.loc[df['dist']==0,:].groupby(['form_date','form_id','permno'])['ip'].sum().reset_index()
-    temp.rename(columns={'ip':'nb_logs'}).to_csv(Constant.DRAFT_1_CSV_PATH+'nb_logs_on_day_of_form.csv')
+    temp.rename(columns={'ip':'nb_logs'}).to_csv(Constant.DRAFT_1_CSV_PATH+'nb_logs_on_day_of_form.csv', index=False)
 
     df.groupby('ym')['ip'].sum().plot()
     plt.ylabel('# of logs')
