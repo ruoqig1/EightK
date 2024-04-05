@@ -3,7 +3,7 @@ import pandas as pd
 import pyperclip
 import tqdm
 from parameters import *
-from data import Data
+from data import *
 import didipack as didi
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -32,6 +32,12 @@ import pandas as pd
 # Your data here (sample provided for reference)
 # df = ...
 
+"""
+Function that converts each row in dataframe to tf.train.Example message,
+which is a flexible message type that represents {"string": value} mappings. 
+Adjust the feature types (tf.train.BytesList, tf.train.FloatList, 
+or tf.train.Int64List) based on your DataFrame's column types.
+"""
 def serialize_news_link_to_8k(row):
     # Extract values
     vec_last = row['vec_last']
@@ -82,6 +88,7 @@ def serialize_news_link_all_single_news(row):
     permno_val = row['permno']
     ret_val = row['ret']
     ret_m = row['ret_m']
+    ret_nd = row['ret_nd']
     reuters = int(row['reuters'])
     encoded_with_mean = int(row['vec_mean'])
     # Create features
@@ -96,6 +103,7 @@ def serialize_news_link_all_single_news(row):
         'permno': tf.train.Feature(int64_list=tf.train.Int64List(value=[permno_val])),
         'ret': tf.train.Feature(float_list=tf.train.FloatList(value=[ret_val])),
         'ret_m': tf.train.Feature(float_list=tf.train.FloatList(value=[ret_m])),
+        'ret_nd': tf.train.Feature(float_list=tf.train.FloatList(value=[ret_nd])),
         'reuters': tf.train.Feature(int64_list=tf.train.Int64List(value=[reuters])),
         'encoded_with_mean': tf.train.Feature(int64_list=tf.train.Int64List(value=[encoded_with_mean])),
     }
@@ -108,10 +116,14 @@ if __name__ == "__main__":
     args = didi.parse()  # --legal=0/1 --eight=0/1 |  19 variations for legal eight
     # BUILD THE MODEL AND DEFINE PARAMETERS
     par = Params()
+
     if args.news_on_eight == 1:
-        # merging
+
+        # year_todo is an array of years, from 2004 to 2023.
         year_todo = np.arange(2004, 2023, 1)[args.a]  # len 19
         print(f'Start running {year_todo}')
+
+        # Initiate parameter class, and choose variables and models of interest.
         par = Params()
         par.enc.opt_model_type = OptModelType.OPT_13b
         par.enc.news_source = NewsSource.NEWS_REF
@@ -120,6 +132,7 @@ if __name__ == "__main__":
         par.train.use_tf_models = True
         save_dir = par.get_training_dir()
 
+        # Initiate the data class.
         data = Data(par)
         cos = data.load_main_cosine()
         ev = data.load_list_by_date_time_permno_type()
@@ -159,7 +172,7 @@ if __name__ == "__main__":
 
         par = Params()
         par.enc.framework = Framework.TENSORFLOW
-        if args.small ==1:
+        if args.small == 1:
             par.enc.opt_model_type = OptModelType.OPT_125m
         else:
             par.enc.opt_model_type = OptModelType.OPT_13b
@@ -177,22 +190,29 @@ if __name__ == "__main__":
         print(f'Start running for all single news {year_todo}')
         # python3 vec_to_tf_records.py 0 --news_on_eight=0 --news_single=1 --small=1
 
+        # Load data and create ret, three day ret and next day return columns.
         data = Data(par)
         df = data.load_crsp_daily()
-        df['ret'] = pd.to_numeric(df['ret'],errors='coerce')
-        df= df.sort_values(['permno','ret']).reset_index(drop=True)
+        df['ret'] = pd.to_numeric(df['ret'], errors='coerce')
+        df = df.sort_values(['permno', 'date']).reset_index(drop=True)
         df['ret_m'] = (df.groupby('permno')['ret'].shift(1) + df.groupby('permno')['ret'].shift(-1) + df['ret'])
-        df = df[['permno', 'date', 'ticker', 'ret','ret_m']].drop_duplicates().sort_values(['permno','date'])
-        df =df.dropna(subset=['ticker','date','ret_m'])
+
+        df = df.sort_values(['permno', 'date']).reset_index(drop=True)
+        df['ret_nd'] = df.groupby('permno')['ret'].shift(-1)
+
+        # Cleans up dataframe s.t. no NA and no duplicates.
+        df = df[['permno', 'date', 'ticker', 'ret', 'ret_m', 'ret_nd']].drop_duplicates().sort_values(['permno', 'date'])
+        df = df.dropna(subset=['ticker', 'date', 'ret_m', 'ret_nd'])
         df = df.drop_duplicates()
-        ind = ~df[['date','ticker']].duplicated()
-        df = df.loc[ind,:].reset_index(drop=True)
+        ind = ~df[['date', 'ticker']].duplicated()
+        df = df.loc[ind, :].reset_index(drop=True)
 
         vec = pd.DataFrame()
         todo = []
+
         # select only the vectors in a given year.
         for k in range(len(to_process_dir_list)):
-            todo = todo + [(x,source_list[k],to_process_dir_list[k]) for x in os.listdir(to_process_dir_list[k]) if (int(x.split('_')[0]) == year_todo)]
+            todo = todo + [(x,source_list[k], to_process_dir_list[k]) for x in os.listdir(to_process_dir_list[k]) if (int(x.split('_')[0]) == year_todo)]
 
         for x in tqdm.tqdm(todo, 'merge the vectors'):
             f, k, to_process_dir = x

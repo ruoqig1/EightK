@@ -730,7 +730,7 @@ class Data:
 
     def load_main_cosine(self, type=None):
         if type is None:
-            save_dir = Constant.MAIN_DIR + '/data/cosine/opt_model_typeOptModelType.BOW1news_sourceNewsSource.NEWS_THIRDnb_chunks100save_chunks_size500chunk_to_run_id1/'
+            save_dir = Constant.MAIN_DIR + 'data/cosine/opt_model_typeOptModelType.BOW1news_sourceNewsSource.NEWS_THIRDnb_chunks100save_chunks_size500chunk_to_run_id1/'
             df = pd.read_pickle(save_dir + 'df.p')
         else:
             # type ran wsj_one_per_stock.

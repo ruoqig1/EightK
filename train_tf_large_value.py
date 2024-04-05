@@ -2,6 +2,7 @@
 #   Larger Model with 3 Layers
 #################################
 
+
 import didipack as didi
 import numpy as np
 import pandas as pd
@@ -146,11 +147,11 @@ class PipelineTrainer:
 
     def extract_input_and_label(self, x):
         abret = next(filter(x.__contains__, ('abret', 'ret_m')))
-        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0)
+        return tf.reshape(x['vec'], (self.input_dim,)), x[abret if self.par.train.abny else 'ret']
 
     def extract_with_id(self, x):
         abret = next(filter(x.__contains__, ('abret', 'ret_m')))
-        return tf.reshape(x['vec'], (self.input_dim,)), tf.where(x[abret if self.par.train.abny else 'ret'] >= 0, 1, 0), \
+        return tf.reshape(x['vec'], (self.input_dim,)), x[abret if self.par.train.abny else 'ret'], \
             x['id'], x['date'], x['permno']
 
     @tf.autograph.experimental.do_not_convert
@@ -200,23 +201,22 @@ class PipelineTrainer:
 
         layers.extend([
             tf.keras.layers.Dense(128, kernel_regularizer=reg_to_use),
-            tf.keras.layers.LeakyReLU(alpha=0.01), 
+            tf.keras.layers.LeakyReLU(alpha=0.01),
             tf.keras.layers.Dropout(0.1),
             tf.keras.layers.Dense(64, kernel_regularizer=reg_to_use),
-            tf.keras.layers.LeakyReLU(alpha=0.01),  
+            tf.keras.layers.LeakyReLU(alpha=0.01),
             tf.keras.layers.Dropout(0.1),
             tf.keras.layers.Dense(32, kernel_regularizer=reg_to_use),
-            tf.keras.layers.LeakyReLU(alpha=0.01), 
-            tf.keras.layers.Dense(1, activation='sigmoid', kernel_regularizer=reg_to_use)
+            tf.keras.layers.LeakyReLU(alpha=0.01),
+            tf.keras.layers.Dense(1, kernel_regularizer=reg_to_use)
         ])
 
-
         model = tf.keras.models.Sequential(layers)
+
         model.compile(
             optimizer=optimizer,
-            loss='binary_crossentropy',
-            metrics=['accuracy', tf.keras.metrics.AUC(name='auc'), tf.keras.metrics.Precision(),
-                    tf.keras.metrics.Recall()],
+            loss='mean_squared_error',
+            metrics=['mae', tf.keras.metrics.MeanSquaredError()],
         )
         model.summary()
 
@@ -268,7 +268,7 @@ class PipelineTrainer:
         self.test_dataset_with_id = self.load_dataset('test', base_dataset, self.par.train.batch_size, start_test,
                                                       end_test, include_id=True, batch=batch)
         self.train_val_dataset = self.load_dataset('train_val', base_dataset, self.par.train.batch_size, start_train,
-                                                      end_val, shuffle=True, batch=batch, cache=True)
+                                                   end_val, shuffle=True, batch=batch, cache=True)
 
     def train_to_find_hyperparams(self):
         best_reg = None
@@ -331,9 +331,7 @@ class PipelineTrainer:
         ids = np.concatenate(ids, axis=0)
         tickers = np.concatenate(tickers, axis=0)
         dates = np.concatenate(dates, axis=0)
-
-        # Compute the predicted labels
-        predicted_labels = (predictions > 0.5).astype(int).flatten()
+        predictions = np.concatenate(predictions, axis=0)
 
         # Saving the results with corresponding IDs, dates, and tickers
         df = pd.DataFrame({
@@ -341,10 +339,8 @@ class PipelineTrainer:
             'date': dates,
             'ticker': tickers,
             'y_true': true_labels,
-            'y_pred': predicted_labels,
-            'y_pred_prb': predictions.flatten()
+            'y_pred': predictions
         })
-        df['accuracy'] = df['y_pred'] == df['y_true']
 
         # evaluation_results = self.model.evaluate(
         #     self.test_dataset,
@@ -355,7 +351,6 @@ class PipelineTrainer:
         #     print("Accuracy from .evaluate:", evaluation_results['accuracy'], flush=True)
         # if 'auc' in evaluation_results:
         #     print("AUC from .evaluate:", evaluation_results['auc'], flush=True)
-        print("Accuracy from .df:", df['accuracy'].mean().round(6), flush=True)
 
         return df
 
@@ -381,7 +376,7 @@ if __name__ == '__main__':
         par.train.tensorboard = True
 
         # par.train.T_train = 1  # reduce the dataset size for faster training
-        
+
         # Skip Normalisation
         # par.train.norm = None
 
@@ -404,7 +399,7 @@ if __name__ == '__main__':
 
             trainer = PipelineTrainer(par)
             trainer.def_create_the_datasets(
-                filter_func=lambda x: 'mean' not in x.split('/')[-1].split('_'),  # filter by 'mean' in file name
+                filter_func=lambda x: 'mean' in x.split('/')[-1].split('_'),  # filter by 'mean' in file name
             )
             print('Preprocessing time', np.round((time.time() - start) / 60, 5), 'min', flush=True)
             # train to find which penalisation to use
@@ -412,8 +407,9 @@ if __name__ == '__main__':
             # trainer.train_on_val_and_train_with_best_hyper()
 
             # This is a known good regulariser to save from testing for it everytime.
-            trainer.model = trainer.train_model(tr_data=trainer.train_val_dataset, val_data=None, reg_to_use=tf.keras.regularizers.l1_l2(0.000005, 0.000005))
-            
+            trainer.model = trainer.train_model(tr_data=trainer.train_val_dataset, val_data=None,
+                                                reg_to_use=tf.keras.regularizers.l1_l2(0.000005, 0.000005))
+
             end = time.time()
             trainer.model.save(temp_save_dir + save_name + '_model.keras')
             print('Ran it all in ', np.round((end - start) / 60, 5), 'min', flush=True)
